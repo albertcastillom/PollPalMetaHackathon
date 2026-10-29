@@ -107,7 +107,20 @@ export async function ingestWashingtonDates({ pool, fetchImpl = fetch, year = ne
              source_id = excluded.source_id,
              source_excerpt = excluded.source_excerpt,
              verified_at = excluded.verified_at,
-             revision = public.election_milestones.revision + 1,
+             revision = case when (
+               public.election_milestones.label,
+               public.election_milestones.occurs_at,
+               public.election_milestones.local_time,
+               public.election_milestones.date_precision,
+               public.election_milestones.source_excerpt
+             ) is distinct from (
+               excluded.label,
+               excluded.occurs_at,
+               excluded.local_time,
+               excluded.date_precision,
+               excluded.source_excerpt
+             ) then public.election_milestones.revision + 1
+             else public.election_milestones.revision end,
              updated_at = now()`,
           [
             electionId, milestone.kind, milestone.label, milestone.occursOn,

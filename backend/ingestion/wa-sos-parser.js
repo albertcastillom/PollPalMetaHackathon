@@ -94,9 +94,12 @@ export function parseWashingtonDatesAndDeadlines(html, year) {
     }).filter(Boolean)
 
     if (!milestones.some((milestone) => milestone.kind === 'election_day')) {
+      const electionDayLabel = /election$/i.test(section.heading)
+        ? `${section.heading} Day`
+        : `${section.heading} Election Day`
       milestones.push({
         kind: 'election_day',
-        label: `${section.heading} Election Day`,
+        label: electionDayLabel,
         occursOn: electionRow.date,
         occursAt: null,
         localTime: null,

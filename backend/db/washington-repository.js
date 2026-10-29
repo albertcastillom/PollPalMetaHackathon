@@ -1,15 +1,22 @@
 function mapElection(row) {
+  const electionDay = row.election_day instanceof Date
+    ? row.election_day.toISOString().slice(0, 10)
+    : String(row.election_day).slice(0, 10)
+  const milestones = (row.milestones ?? []).sort((left, right) => (
+    left.occursOn.localeCompare(right.occursOn) || left.kind.localeCompare(right.kind)
+  ))
+
   return {
     id: row.id,
     externalId: row.external_id,
     name: row.name,
     type: row.type,
-    electionDay: row.election_day,
+    electionDay,
     status: row.status,
     timezone: row.timezone,
     verifiedAt: row.verified_at,
     source: row.source,
-    milestones: row.milestones ?? [],
+    milestones,
   }
 }
 
@@ -94,7 +101,13 @@ export function createWashingtonRepository(pool) {
          order by j.type, c.component`,
         [jurisdictionIds],
       )
-      return rows
+      return rows.map((row) => ({
+        component: row.component,
+        status: row.status,
+        notes: row.notes,
+        verifiedAt: row.verified_at,
+        jurisdictionId: row.jurisdiction_external_id,
+      }))
     },
   }
 }

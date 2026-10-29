@@ -33,4 +33,8 @@ test('extracts a Washington election and voter-facing milestones', () => {
     election.milestones.find((item) => item.kind === 'ballot_return_deadline').localTime,
     '20:00:00',
   )
+  assert.equal(
+    election.milestones.find((item) => item.kind === 'election_day').label,
+    'General Election Day',
+  )
 })

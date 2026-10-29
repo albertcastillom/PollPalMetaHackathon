@@ -37,6 +37,9 @@ npm run ingest:wa:boundaries
 npm run dev
 ```
 
+PollPal's local Supabase services use ports `55321`–`55329` so they can run
+alongside another project using Supabase's default `5432x` ports.
+
 The boundary import is intentionally a background operation. The statewide
 precinct source is tens of megabytes and is paginated into local storage.
 

@@ -7,6 +7,33 @@ function slug(value) {
   return String(value).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')
 }
 
+function polygonParts(geometry) {
+  if (!geometry) return []
+  if (geometry.type === 'Polygon') return [geometry.coordinates]
+  if (geometry.type === 'MultiPolygon') return geometry.coordinates
+  throw new Error(`Unsupported boundary geometry type: ${geometry.type}`)
+}
+
+function deduplicateBoundaries(records) {
+  const unique = new Map()
+  for (const record of records) {
+    const existing = unique.get(record.externalId)
+    if (!existing) {
+      unique.set(record.externalId, record)
+      continue
+    }
+
+    const coordinates = [
+      ...polygonParts(existing.geometry),
+      ...polygonParts(record.geometry),
+    ]
+    existing.geometry = coordinates.length === 0
+      ? null
+      : { type: 'MultiPolygon', coordinates }
+  }
+  return [...unique.values()]
+}
+
 async function sourceId(client, source) {
   const { rows } = await client.query(
     `insert into public.sources (key, publisher, url, category)
@@ -26,7 +53,7 @@ async function upsertBatch(client, records) {
        item->>'externalId',
        item->>'name',
        item->>'type',
-       case when item->'geometry' is null then null else
+       case when item->'geometry' is null or item->'geometry' = 'null'::jsonb then null else
          extensions.st_multi(extensions.st_setsrid(extensions.st_geomfromgeojson(item->'geometry'), 4326))
        end,
        item->'metadata',
@@ -58,7 +85,7 @@ export async function importWashingtonBoundaries({ pool, fetchImpl = fetch }) {
       outFields: ['County', 'CountyName', 'PrecCode', 'PrecName', 'LD', 'CD'],
       fetchImpl,
     }),
-    fetchArcGisFeatures({ url: CITY_URL, outFields: ['CITY', 'GNIS', 'PLACE'], fetchImpl }),
+    fetchArcGisFeatures({ url: CITY_URL, outFields: ['CITY', 'CITY_DISSOLVE', 'GNIS', 'PLACE'], fetchImpl }),
   ])
 
   if (precinctFeatures.length < 1000 || cityFeatures.length < 200) {
@@ -82,7 +109,7 @@ export async function importWashingtonBoundaries({ pool, fetchImpl = fetch }) {
     })
 
     const derived = new Map()
-    const precincts = precinctFeatures.map((feature) => {
+    const precincts = deduplicateBoundaries(precinctFeatures.map((feature) => {
       const p = feature.properties
       const countyExternalId = `wa:county:${slug(p.CountyName)}`
       const legislativeExternalId = `wa:legislative:${p.LD}`
@@ -100,7 +127,7 @@ export async function importWashingtonBoundaries({ pool, fetchImpl = fetch }) {
         sourceId: precinctSourceId,
         verifiedAt,
       }
-    })
+    }))
 
     const derivedRecords = [{ externalId: 'ocd-division/country:us/state:wa', name: 'Washington', type: 'state' }, ...derived.values()].map((record) => ({
       ...record,
@@ -109,15 +136,17 @@ export async function importWashingtonBoundaries({ pool, fetchImpl = fetch }) {
       sourceId: precinctSourceId,
       verifiedAt,
     }))
-    const cities = cityFeatures.map((feature) => ({
-      externalId: `wa:city:${slug(feature.properties.CITY)}`,
-      name: feature.properties.CITY,
+    const cities = deduplicateBoundaries(cityFeatures.filter((feature) => (
+      feature.properties.CITY_DISSOLVE || feature.properties.CITY
+    )).map((feature) => ({
+      externalId: `wa:city:${slug(feature.properties.CITY_DISSOLVE ?? feature.properties.CITY)}`,
+      name: feature.properties.CITY_DISSOLVE ?? feature.properties.CITY,
       type: 'city',
       geometry: feature.geometry,
       metadata: { gnis: feature.properties.GNIS, place: feature.properties.PLACE },
       sourceId: citySourceId,
       verifiedAt,
-    }))
+    })))
 
     for (const records of [derivedRecords, precincts, cities]) {
       for (let index = 0; index < records.length; index += 250) {
@@ -155,6 +184,19 @@ export async function importWashingtonBoundaries({ pool, fetchImpl = fetch }) {
          from public.jurisdictions where type = 'precinct'
        ), updated_at = now()
        where external_id = 'ocd-division/country:us/state:wa'`,
+    )
+
+    await client.query(
+      `insert into public.coverage (jurisdiction_id, component, status, notes, verified_at)
+       select id, 'precinct_matching', 'complete',
+              'Washington SOS statewide precinct boundaries', $1
+       from public.jurisdictions
+       where external_id = 'ocd-division/country:us/state:wa'
+       on conflict (jurisdiction_id, component) do update set
+         status = excluded.status,
+         notes = excluded.notes,
+         verified_at = excluded.verified_at`,
+      [verifiedAt],
     )
 
     await client.query('commit')
