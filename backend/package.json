@@ -1,0 +1,25 @@
+{
+  "name": "pollpal-washington-api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js",
+    "test": "node --test ingestion/*.test.js services/*.test.js services/**/*.test.js",
+    "ingest:wa:sos": "node scripts/ingest-wa-sos.js",
+    "ingest:wa:boundaries": "node scripts/import-wa-boundaries.js"
+  },
+  "dependencies": {
+    "cheerio": "1.2.0",
+    "cors": "2.8.6",
+    "dotenv": "18.0.9",
+    "express": "5.3.0",
+    "helmet": "8.3.0",
+    "pg": "8.23.1",
+    "zod": "4.6.7"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
