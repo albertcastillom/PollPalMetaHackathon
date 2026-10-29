@@ -111,12 +111,18 @@ export async function importWashingtonBoundaries({ pool, fetchImpl = fetch }) {
     const derived = new Map()
     const precincts = deduplicateBoundaries(precinctFeatures.map((feature) => {
       const p = feature.properties
-      const countyExternalId = `wa:county:${slug(p.CountyName)}`
-      const legislativeExternalId = `wa:legislative:${p.LD}`
-      const congressionalExternalId = `wa:congressional:${p.CD}`
-      derived.set(countyExternalId, { externalId: countyExternalId, name: `${p.CountyName} County`, type: 'county' })
-      derived.set(legislativeExternalId, { externalId: legislativeExternalId, name: `Legislative District ${p.LD}`, type: 'legislative' })
-      derived.set(congressionalExternalId, { externalId: congressionalExternalId, name: `Congressional District ${p.CD}`, type: 'congressional' })
+      const countyExternalId = p.CountyName ? `wa:county:${slug(p.CountyName)}` : null
+      const legislativeExternalId = p.LD == null ? null : `wa:legislative:${p.LD}`
+      const congressionalExternalId = p.CD == null ? null : `wa:congressional:${p.CD}`
+      if (countyExternalId) {
+        derived.set(countyExternalId, { externalId: countyExternalId, name: `${p.CountyName} County`, type: 'county' })
+      }
+      if (legislativeExternalId) {
+        derived.set(legislativeExternalId, { externalId: legislativeExternalId, name: `Legislative District ${p.LD}`, type: 'legislative' })
+      }
+      if (congressionalExternalId) {
+        derived.set(congressionalExternalId, { externalId: congressionalExternalId, name: `Congressional District ${p.CD}`, type: 'congressional' })
+      }
 
       return {
         externalId: `wa:precinct:${p.County}:${p.PrecCode}`,
@@ -153,6 +159,11 @@ export async function importWashingtonBoundaries({ pool, fetchImpl = fetch }) {
         await upsertBatch(client, records.slice(index, index + 250))
       }
     }
+
+    await client.query(
+      `delete from public.jurisdictions
+       where external_id in ('wa:county:null', 'wa:city:null', 'wa:legislative:null', 'wa:congressional:null')`,
+    )
 
     await client.query(
       `with precinct_groups as (
