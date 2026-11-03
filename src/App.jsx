@@ -6,6 +6,7 @@ import Candidates from './pages/Candidates'
 import Login from './components/Login'
 import Footer from './components/Footer'
 import Home from './pages/Home'
+import Profile from './pages/Profile'
 import AuthProvider from './context/AuthProvider'
 
 function ScrollToTop() {
@@ -37,6 +38,7 @@ function App() {
             <Route path="/map" element={<BallotMap search={search} onSearch={onSearch} />} />
             <Route path="/candidates" element={<Candidates />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/profile" element={<Profile />} />
           </Routes>
         </main>
         <Footer />

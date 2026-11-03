@@ -11,6 +11,7 @@ const links = [
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { user, signOut } = useAuth()
+  const navLinks = user ? [...links, { label: 'Profile', to: '/profile' }] : links
 
   const linkClass = ({ isActive }) =>
     `text-sm font-medium pb-1 border-b-2 ${
@@ -32,7 +33,7 @@ function Header() {
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
-          {links.map((link) => (
+          {navLinks.map((link) => (
             <NavLink key={link.to} to={link.to} end className={linkClass}>
               {link.label}
             </NavLink>
@@ -42,9 +43,13 @@ function Header() {
         <div className="flex items-center gap-3">
           {user ? (
             <>
-              <span className="hidden max-w-[10rem] truncate text-sm text-slate-600 sm:inline" title={user.email}>
+              <Link
+                to="/profile"
+                className="hidden max-w-[10rem] truncate text-sm text-slate-600 hover:text-blue-700 sm:inline"
+                title={user.email}
+              >
                 {user.email}
-              </span>
+              </Link>
               <button
                 type="button"
                 onClick={signOut}
@@ -75,7 +80,7 @@ function Header() {
 
       {menuOpen && (
         <nav className="border-t border-slate-200 bg-white px-4 py-3 md:hidden">
-          {links.map((link) => (
+          {navLinks.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
