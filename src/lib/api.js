@@ -1,4 +1,4 @@
-const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:3001').replace(/\/$/, '')
+export const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:3001').replace(/\/$/, '')
 
 // Looks up upcoming elections, voting locations and contests for a full street address.
 // The backend turns the address into coordinates (US Census geocoder) and does not store it.
@@ -25,5 +25,24 @@ export async function fetchElectionsByAddress(address, { signal } = {}) {
     throw Object.assign(new Error(message), { code: body?.error?.code })
   }
 
+  return body
+}
+// Neutral side-by-side comparison of every candidate in one race. Comparisons can take a
+// little while the first time because each candidate's statement is summarized separately.
+export async function fetchContestComparison(contestId, { signal } = {}) {
+  let response
+
+  try {
+    response = await fetch(`${API_URL}/api/contests/${encodeURIComponent(contestId)}/comparison`, { signal })
+  } catch (error) {
+    if (error.name === 'AbortError') throw error
+    throw new Error('Could not reach the PollPal server. Make sure the backend is running.', { cause: error })
+  }
+
+  const body = await response.json().catch(() => null)
+  if (!response.ok) {
+    const message = body?.error?.message ?? 'Could not load the comparison. Please try again.'
+    throw Object.assign(new Error(message), { code: body?.error?.code })
+  }
   return body
 }

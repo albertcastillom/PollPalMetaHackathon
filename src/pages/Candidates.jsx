@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import AddressForm from '../components/AddressForm'
+import CandidateComparison from '../components/CandidateComparison'
 import { useElections } from '../lib/useElections'
 import { formatDate } from '../lib/format'
 
@@ -60,6 +61,7 @@ function CandidateCard({ candidate }) {
 function RaceSection({ contest }) {
   const candidates = contest.candidates ?? []
   const district = contest.metadata?.district ?? contest.description
+  const [comparing, setComparing] = useState(false)
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
@@ -82,6 +84,18 @@ function RaceSection({ contest }) {
           ))}
         </ul>
       )}
+
+      {candidates.length >= 2 && (
+        <button
+          type="button"
+          onClick={() => setComparing((value) => !value)}
+          aria-expanded={comparing}
+          className="mt-4 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          {comparing ? 'Hide comparison' : 'Compare side by side'}
+        </button>
+      )}
+      {comparing && <CandidateComparison contestId={contest.id} />}
 
       {(contest.url || contest.source?.url) && (
         <p className="mt-4 text-xs text-slate-500">

@@ -665,3 +665,27 @@ curl -X POST http://localhost:3001/api/elections \
 - [Washington backend and ingestion](BACKEND_WASHINGTON.md)
 - [Architecture and data model](ARCHITECTURE.md)
 - [Product specification](PRODUCT_SPEC.md)
+
+## Neutral candidate comparison
+
+### `GET /api/contests/:contestId/comparison`
+
+Returns a side-by-side comparison of every active candidate in one `candidate_race`
+(`contestId` is `contests[].id` from `POST /api/elections`).
+
+- `recordRows` / `candidates[].records`: shown verbatim, no AI. Party preference is
+  `official_filing`; experience, education and community service are
+  `candidate_statement` (candidate-submitted to the official voters' guide).
+- `questions` / `candidates[].answers`: the same fixed questions for every candidate,
+  answered by Muse Spark from that candidate's voters' guide text only. Each answer has a
+  `status`: `answered` (summary plus 1–2 exact quotes verified in code), `not_addressed`,
+  `no_statement`, or `not_verified` (the model's answer failed validation and is hidden).
+- `ai.status`: `ok`, `partial` (some answers rejected), or `not_configured`
+  (`MUSE_API_KEY` unset; `answers` is `null`).
+- `audit`: equal-treatment and citation check results for display.
+
+Safeguards: one identical request per candidate, without the candidate's name or party
+and without other candidates; random processing order; temperature 0; quotes must match
+the candidate's own text; evaluative words are rejected unless the candidate used them;
+summaries naming another candidate are rejected. Voters cannot submit free-text questions
+to this endpoint.

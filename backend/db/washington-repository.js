@@ -237,6 +237,36 @@ export function createWashingtonRepository(pool) {
       }
     },
 
+    // One candidate race with every active candidate and their voters' guide profile.
+    async findContestForComparison(contestId) {
+      const { rows } = await pool.query(
+        `select c.id, c.title, c.description, c.url, c.metadata,
+           coalesce((
+             select jsonb_agg(jsonb_build_object(
+               'id', candidate.id,
+               'name', candidate.name,
+               'party', candidate.party,
+               'profile', case when profile.candidate_id is null then null else jsonb_build_object(
+                 'voterGuideUrl', profile.voter_guide_url,
+                 'electedExperience', profile.elected_experience,
+                 'professionalExperience', profile.professional_experience,
+                 'education', profile.education,
+                 'communityService', profile.community_service,
+                 'statement', profile.statement,
+                 'photoUrl', case when profile.photo is null then null else '/api/candidates/' || candidate.id || '/photo' end
+               ) end
+             ) order by candidate.ballot_order nulls last, candidate.name)
+             from public.contest_candidates candidate
+             left join public.candidate_profiles profile on profile.candidate_id = candidate.id
+             where candidate.contest_id = c.id and candidate.filing_status = 'active'
+           ), '[]'::jsonb) as candidates
+         from public.contests c
+         where c.id = $1 and c.type = 'candidate_race'`,
+        [contestId],
+      )
+      return rows[0] ?? null
+    },
+
     async findCandidatePhoto(candidateId) {
       const { rows } = await pool.query(
         `select profile.photo, profile.photo_mime_type
