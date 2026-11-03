@@ -1,80 +1,294 @@
-const candidates = [
-  { name: 'Candidate Name', office: 'Office', party: 'Party', sources: ['State election office', 'FEC filings'] },
-  { name: 'Candidate Name', office: 'Office', party: 'Party', sources: ['State election office', 'County clerk'] },
-  { name: 'Candidate Name', office: 'Office', party: 'Party', sources: ['State election office', 'FEC filings'] },
-]
+import { useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import AddressForm from '../components/AddressForm'
+import { useElections } from '../lib/useElections'
+import { formatDate } from '../lib/format'
 
-function CandidatesPage() {
+// Order races from the widest district to the narrowest, the way a ballot reads.
+const DISTRICT_ORDER = ['federal', 'statewide', 'state', 'judicial', 'congressional', 'legislative', 'county', 'countywide', 'city/town']
+
+function districtRank(contest) {
+  const type = String(contest.metadata?.districtType ?? '').toLowerCase()
+  const index = DISTRICT_ORDER.indexOf(type)
+  return index === -1 ? DISTRICT_ORDER.length : index
+}
+
+function initials(name) {
+  return String(name)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
+}
+
+function checkedOn(value) {
+  if (!value) return null
+  return formatDate(String(value).slice(0, 10), { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function CandidateCard({ candidate }) {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="max-w-2xl">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Candidate information
-          </h1>
-          <p className="mt-2 text-slate-600">
-            Information pulled from government and official sources, so you can see where each detail
-            comes from.
-          </p>
-        </div>
-        <div>
-          <label htmlFor="election-select" className="mb-1 block text-sm font-semibold text-slate-800">
-            Election
-          </label>
-          <select
-            id="election-select"
-            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 sm:w-64"
-            defaultValue="General Election"
+    <li className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div
+        aria-hidden="true"
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600"
+      >
+        {initials(candidate.name)}
+      </div>
+      <div className="min-w-0">
+        <p className="font-semibold text-slate-900">{candidate.name}</p>
+        <p className="text-sm text-slate-500">
+          {candidate.party ? `Prefers ${candidate.party} Party` : 'No party preference listed'}
+        </p>
+        {candidate.profileUrl && (
+          <a
+            href={candidate.profileUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-1 inline-block text-xs font-medium text-blue-700 hover:underline"
           >
-            <option>General Election</option>
-            <option>County Commissioner Race</option>
-            <option>School Board Election</option>
-          </select>
+            View profile
+          </a>
+        )}
+      </div>
+    </li>
+  )
+}
+
+function RaceSection({ contest }) {
+  const candidates = contest.candidates ?? []
+  const district = contest.metadata?.district ?? contest.description
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">{contest.title}</h3>
+          {district && <p className="text-sm text-slate-600">{district}</p>}
         </div>
+        <p className="text-xs text-slate-500">
+          {candidates.length} {candidates.length === 1 ? 'candidate' : 'candidates'}
+        </p>
       </div>
 
-      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {candidates.map((c, i) => (
-          <article key={i} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-200 text-slate-400">
-                <svg viewBox="0 0 24 24" className="h-7 w-7" fill="currentColor">
-                  <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="font-semibold text-slate-900">{c.name}</h2>
-                <p className="text-sm text-slate-500">
-                  {c.office} · {c.party}
-                </p>
-              </div>
-            </div>
+      {candidates.length === 0 ? (
+        <p className="mt-4 text-sm text-slate-600">No active candidates are listed for this race.</p>
+      ) : (
+        <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {candidates.map((candidate) => (
+            <CandidateCard key={candidate.id} candidate={candidate} />
+          ))}
+        </ul>
+      )}
 
-            <dl className="mt-5 space-y-4 text-sm">
-              <div>
-                <dt className="font-medium text-slate-700">Background</dt>
-                <dd className="mt-2 h-3 w-full rounded bg-slate-200" />
-                <dd className="mt-1.5 h-3 w-2/3 rounded bg-slate-200" />
-              </div>
-              <div>
-                <dt className="font-medium text-slate-700">Positions</dt>
-                <dd className="mt-2 h-3 w-full rounded bg-slate-200" />
-                <dd className="mt-1.5 h-3 w-1/2 rounded bg-slate-200" />
-              </div>
-            </dl>
+      {(contest.url || contest.source?.url) && (
+        <p className="mt-4 text-xs text-slate-500">
+          Source:{' '}
+          <a
+            href={contest.url ?? contest.source.url}
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-blue-700 hover:underline"
+          >
+            {contest.source?.publisher ?? 'Official source'}
+          </a>
+          {checkedOn(contest.verifiedAt) && <> · checked {checkedOn(contest.verifiedAt)}</>}
+        </p>
+      )}
+    </section>
+  )
+}
 
-            <div className="mt-5 flex flex-wrap gap-2">
-              {c.sources.map((s) => (
-                <span key={s} className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-                  {s}
-                </span>
+function OtherBallotItems({ measures, resources }) {
+  if (measures.length === 0 && resources.length === 0) return null
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      {measures.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold text-slate-900">Measures</h2>
+          <ul className="mt-3 space-y-3">
+            {measures.map((measure) => (
+              <li key={measure.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="font-medium text-slate-900">{measure.title}</p>
+                {measure.description && <p className="mt-1 text-sm text-slate-600">{measure.description}</p>}
+                {measure.url && (
+                  <a
+                    href={measure.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-block text-xs font-medium text-blue-700 hover:underline"
+                  >
+                    Read official text
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {resources.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold text-slate-900">Official ballot resources</h2>
+          <ul className="mt-3 space-y-3">
+            {resources.map((resource) => (
+              <li key={resource.id}>
+                <a
+                  href={resource.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-blue-300"
+                >
+                  <span className="font-medium text-blue-700">{resource.title}</span>
+                  {resource.description && (
+                    <span className="mt-1 block text-sm text-slate-600">{resource.description}</span>
+                  )}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  )
+}
+
+function CandidatesPage({ search, onSearch }) {
+  const { address } = search
+  const { loading, data, error } = useElections(search)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const elections = useMemo(() => data?.elections ?? [], [data])
+  const contests = useMemo(() => data?.contests ?? [], [data])
+
+  // Use the election chosen on the Home page (?election=<id>) when it belongs to this address.
+  // Otherwise default to the first election that has races, then to the first election.
+  const requestedId = searchParams.get('election')
+  const selectedElection =
+    elections.find((election) => election.id === requestedId) ??
+    elections.find((election) => contests.some((contest) => contest.electionId === election.id)) ??
+    elections[0] ??
+    null
+
+  const { races, measures, resources } = useMemo(() => {
+    const forElection = contests.filter((contest) => contest.electionId === selectedElection?.id)
+    return {
+      races: forElection
+        .filter((contest) => contest.type === 'candidate_race')
+        .sort((a, b) => districtRank(a) - districtRank(b) || a.title.localeCompare(b.title)),
+      measures: forElection.filter((contest) => contest.type === 'measure'),
+      resources: forElection.filter((contest) => contest.type === 'ballot_resource' && contest.url),
+    }
+  }, [contests, selectedElection])
+
+  const contestsCoverage = (data?.coverage ?? []).filter((item) => item.component === 'contests')
+  const isPartial = contestsCoverage.length === 0 || contestsCoverage.some((item) => item.status !== 'complete')
+
+  const selectElection = (id) => {
+    const next = new URLSearchParams(searchParams)
+    next.set('election', id)
+    setSearchParams(next, { replace: true })
+  }
+
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+      <div className="max-w-2xl">
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Candidate information</h1>
+        <p className="mt-2 text-slate-600">
+          The candidates on your ballot, from the Washington Secretary of State&apos;s official candidate list.
+        </p>
+      </div>
+
+      <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-end">
+        <div className="max-w-xl flex-1">
+          <AddressForm
+            key={address}
+            id="candidates-address"
+            initialAddress={address}
+            buttonLabel="Find candidates"
+            onSubmit={onSearch}
+            hint="Currently covers Washington state."
+          />
+        </div>
+
+        {elections.length > 0 && (
+          <div>
+            <label htmlFor="election-select" className="mb-1 block text-sm font-semibold text-slate-800">
+              Election
+            </label>
+            <select
+              id="election-select"
+              value={selectedElection?.id ?? ''}
+              onChange={(event) => selectElection(event.target.value)}
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 lg:w-80"
+            >
+              {elections.map((election) => (
+                <option key={election.id} value={election.id}>
+                  {election.name} ({formatDate(election.electionDay, { month: 'short', day: 'numeric', year: 'numeric' })})
+                </option>
               ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-8 space-y-6" aria-live="polite">
+        {!address && (
+          <p className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+            Enter your address to see the candidates on your ballot.
+          </p>
+        )}
+
+        {loading && (
+          <p role="status" className="text-sm text-slate-600">
+            Looking up the races on your ballot…
+          </p>
+        )}
+
+        {error && (
+          <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            {error.message}
+          </div>
+        )}
+
+        {data && elections.length === 0 && (
+          <p className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+            We didn&apos;t find upcoming elections for this address in our data. Check with your county elections
+            office.
+          </p>
+        )}
+
+        {data && selectedElection && (
+          <>
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900">{selectedElection.name}</h2>
+              <p className="text-sm text-slate-600">
+                Races for {data.normalizedLocation ?? address} · Election Day {formatDate(selectedElection.electionDay)}
+              </p>
             </div>
-            <button className="mt-5 w-full rounded-lg border border-slate-300 bg-white py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-              View full profile
-            </button>
-          </article>
-        ))}
+
+            {isPartial && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                This list may not include every race on your ballot. Statewide, congressional, legislative, county
+                and city races are covered; school, fire, port and other local districts are not yet included.
+                Your official ballot and voter pamphlet are the final word.
+              </div>
+            )}
+
+            {races.length === 0 ? (
+              <p className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+                We don&apos;t have candidate information for this election at your address yet.
+              </p>
+            ) : (
+              races.map((contest) => <RaceSection key={contest.id} contest={contest} />)
+            )}
+
+            <OtherBallotItems measures={measures} resources={resources} />
+          </>
+        )}
       </div>
     </div>
   )

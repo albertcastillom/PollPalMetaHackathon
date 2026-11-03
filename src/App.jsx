@@ -36,7 +36,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home search={search} onSearch={onSearch} />} />
             <Route path="/map" element={<BallotMap search={search} onSearch={onSearch} />} />
-            <Route path="/candidates" element={<Candidates />} />
+            <Route path="/candidates" element={<Candidates search={search} onSearch={onSearch} />} />
             <Route path="/login" element={<Login />} />
             <Route path="/profile" element={<Profile />} />
           </Routes>
