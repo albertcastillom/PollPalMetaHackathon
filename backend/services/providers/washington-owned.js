@@ -15,9 +15,12 @@ export function createWashingtonOwnedProvider({ repository }) {
       }
 
       const jurisdictionIds = jurisdictions.map((item) => item.id)
-      const [elections, coverage] = await Promise.all([
-        repository.findUpcomingElections(jurisdictionIds),
+      const elections = await repository.findUpcomingElections(jurisdictionIds)
+      const electionIds = elections.map((election) => election.id)
+      const [coverage, votingLocations, contests] = await Promise.all([
         repository.getCoverage(jurisdictionIds),
+        repository.findVotingLocations(electionIds, jurisdictionIds),
+        repository.findContests(electionIds, jurisdictionIds),
       ])
 
       return {
@@ -31,6 +34,8 @@ export function createWashingtonOwnedProvider({ repository }) {
           verifiedAt: item.verified_at,
         })),
         elections,
+        votingLocations,
+        contests,
         coverage,
       }
     },

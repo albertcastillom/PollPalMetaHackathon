@@ -88,7 +88,38 @@ Current official sources:
 - Washington Department of Revenue city boundaries ArcGIS MapServer
 - U.S. Census Geocoding Services for address normalization
 
-Phase 2 adds King and Snohomish election, contest, and voting-location adapters.
+## Phase 2 county adapters
+
+Phase 2 adds official county election and voting-location ingestion for:
+
+- King County
+- Snohomish County
+- Benton County (Kennewick, Richland, and West Richland)
+- Franklin County (Pasco and the rest of Franklin County)
+
+Run all county adapters:
+
+```sh
+cd backend
+npm run ingest:wa:counties -- 2026
+```
+
+Run a subset by adapter key:
+
+```sh
+npm run ingest:wa:counties -- 2026 benton franklin
+```
+
+The API response now includes `votingLocations` and `contests`. Location
+coverage is complete for each supported county when its live parser passes the
+minimum-record safety check. Contest coverage remains explicitly `partial`
+because some counties publish only an address-specific VoteWA guide or a PDF
+rather than a complete machine-readable contest list. In those cases PollPal
+returns the official ballot resource instead of inferring missing contests.
+
+Current Phase 2 sources include King County's official ballot-drop-box GIS
+layer and the official election/location pages maintained by Snohomish, Benton,
+and Franklin counties.
 
 ## Privacy
 

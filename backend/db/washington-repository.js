@@ -20,6 +20,11 @@ function mapElection(row) {
   }
 }
 
+function dateOnly(value) {
+  if (!value) return null
+  return value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10)
+}
+
 export function createWashingtonRepository(pool) {
   return {
     async resolveJurisdictions({ latitude, longitude }) {
@@ -89,6 +94,70 @@ export function createWashingtonRepository(pool) {
       )
 
       return rows.map(mapElection)
+    },
+
+    async findVotingLocations(electionIds, jurisdictionIds) {
+      if (electionIds.length === 0 || jurisdictionIds.length === 0) return []
+      const { rows } = await pool.query(
+        `select
+           l.*,
+           case when l.geometry is null then null else extensions.st_y(l.geometry) end as latitude,
+           case when l.geometry is null then null else extensions.st_x(l.geometry) end as longitude,
+           jsonb_build_object('publisher', s.publisher, 'url', s.url) as source
+         from public.voting_locations l
+         join public.sources s on s.id = l.source_id
+         where l.election_id = any($1)
+           and l.jurisdiction_id = any($2)
+         order by l.city nulls last, l.name`,
+        [electionIds, jurisdictionIds],
+      )
+      return rows.map((row) => ({
+        id: row.id,
+        externalId: row.external_id,
+        electionId: row.election_id,
+        type: row.type,
+        name: row.name,
+        address: row.address,
+        city: row.city,
+        postalCode: row.postal_code,
+        description: row.description,
+        driveUp: row.drive_up,
+        opensOn: dateOnly(row.opens_on),
+        closesOn: dateOnly(row.closes_on),
+        opensTime: row.opens_time,
+        closesTime: row.closes_time,
+        timezone: row.timezone,
+        coordinates: row.latitude == null || row.longitude == null
+          ? null
+          : { latitude: Number(row.latitude), longitude: Number(row.longitude) },
+        source: row.source,
+        verifiedAt: row.verified_at,
+      }))
+    },
+
+    async findContests(electionIds, jurisdictionIds) {
+      if (electionIds.length === 0 || jurisdictionIds.length === 0) return []
+      const { rows } = await pool.query(
+        `select c.*, jsonb_build_object('publisher', s.publisher, 'url', s.url) as source
+         from public.contests c
+         join public.sources s on s.id = c.source_id
+         where c.election_id = any($1)
+           and c.jurisdiction_id = any($2)
+         order by c.type, c.title`,
+        [electionIds, jurisdictionIds],
+      )
+      return rows.map((row) => ({
+        id: row.id,
+        externalId: row.external_id,
+        electionId: row.election_id,
+        type: row.type,
+        title: row.title,
+        description: row.description,
+        url: row.url,
+        metadata: row.metadata,
+        source: row.source,
+        verifiedAt: row.verified_at,
+      }))
     },
 
     async getCoverage(jurisdictionIds) {

@@ -8,7 +8,8 @@
     "start": "node server.js",
     "test": "node --test ingestion/*.test.js services/*.test.js services/**/*.test.js",
     "ingest:wa:sos": "node scripts/ingest-wa-sos.js",
-    "ingest:wa:boundaries": "node scripts/import-wa-boundaries.js"
+    "ingest:wa:boundaries": "node scripts/import-wa-boundaries.js",
+    "ingest:wa:counties": "node scripts/ingest-wa-counties.js"
   },
   "dependencies": {
     "cheerio": "1.2.0",
