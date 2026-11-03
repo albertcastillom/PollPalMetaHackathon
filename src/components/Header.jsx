@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
+import T from '../context/T'
+import { LANGUAGES } from '../context/translation-context'
+import { useTranslation } from '../context/useTranslation'
 
 const links = [
   { label: 'Find Elections', to: '/' },
@@ -12,6 +15,7 @@ const links = [
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { user, signOut } = useAuth()
+  const { language, setLanguage, translate } = useTranslation(['Choose language', 'Toggle menu'])
 
   const linkClass = ({ isActive }) =>
     `text-sm font-medium pb-1 border-b-2 ${
@@ -29,18 +33,33 @@ function Header() {
               <path d="M5 13l4 4L19 7" />
             </svg>
           </span>
-          Elections Tracker
+          <T>PollPal</T>
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
           {links.map((link) => (
             <NavLink key={link.to} to={link.to} end className={linkClass}>
-              {link.label}
+              <T>{link.label}</T>
             </NavLink>
           ))}
         </nav>
 
         <div className="flex items-center gap-3">
+          <label className="relative">
+            <span className="sr-only">{translate('Choose language')}</span>
+            <select
+              value={language}
+              onChange={(event) => setLanguage(event.target.value)}
+              aria-label={translate('Choose language')}
+              className="max-w-32 rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 sm:max-w-40"
+            >
+              {LANGUAGES.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.nativeName}
+                </option>
+              ))}
+            </select>
+          </label>
           {user ? (
             <>
               <Link
@@ -55,7 +74,7 @@ function Header() {
                 onClick={signOut}
                 className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
               >
-                Log out
+                <T>Log out</T>
               </button>
             </>
           ) : (
@@ -63,13 +82,13 @@ function Header() {
               to="/login"
               className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
             >
-              Log in
+              <T>Log in</T>
             </Link>
           )}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden"
-            aria-label="Toggle menu"
+            aria-label={translate('Toggle menu')}
           >
             <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
@@ -92,7 +111,7 @@ function Header() {
                 }`
               }
             >
-              {link.label}
+              <T>{link.label}</T>
             </NavLink>
           ))}
         </nav>

@@ -6,6 +6,7 @@ import { createElectionRouter } from './routes/elections.js'
 import { createCandidateRouter } from './routes/candidates.js'
 import { createContestRouter } from './routes/contests.js'
 import { createReminderRouter } from './routes/reminders.js'
+import { createTranslationRouter } from './routes/translations.js'
 
 export function createApp({
   electionService,
@@ -13,6 +14,7 @@ export function createApp({
   reminderRepository,
   candidateRepository,
   comparisonService,
+  translationService,
   clientOrigin = 'http://localhost:5173',
   appUrl = 'http://localhost:5173',
 }) {
@@ -31,6 +33,7 @@ export function createApp({
   app.use('/api/candidates', createCandidateRouter({ candidateRepository }))
   if (comparisonService) app.use('/api/contests', createContestRouter({ comparisonService }))
   app.use('/api/reminders', createReminderRouter({ authVerifier, reminderRepository, appUrl }))
+  if (translationService) app.use('/api/translations', createTranslationRouter({ translationService }))
 
   app.use((error, _request, response, _next) => {
     void _next

@@ -8,6 +8,7 @@ import { createElectionService } from './services/election-service.js'
 import { createCandidateComparisonService } from './services/comparison/candidate-comparison.js'
 import { createMuseClient } from './services/comparison/muse-client.js'
 import { createSupabaseAuthVerifier } from './services/supabase-auth.js'
+import { createTranslationService } from './services/translation-service.js'
 import { createCensusGeocoder } from './services/providers/census-geocoder.js'
 import { createWashingtonOwnedProvider } from './services/providers/washington-owned.js'
 
@@ -35,12 +36,18 @@ const museClient = createMuseClient({
 })
 if (!museClient) console.warn('MUSE_API_KEY is not set: candidate comparisons will show official records only.')
 const comparisonService = createCandidateComparisonService({ repository, model: museClient })
+const translationService = createTranslationService({
+  apiToken: process.env.HF_TOKEN,
+  model: process.env.TRANSLATION_MODEL,
+  endpoint: process.env.TRANSLATION_API_URL,
+})
 const app = createApp({
   electionService,
   authVerifier,
   reminderRepository,
   candidateRepository: repository,
   comparisonService,
+  translationService,
   clientOrigin: process.env.CLIENT_ORIGIN,
   appUrl: process.env.APP_URL,
 })

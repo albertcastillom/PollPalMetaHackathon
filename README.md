@@ -51,3 +51,25 @@ ingestion, authenticated reminder subscriptions, schedule materialization, and
 the Resend worker are implemented. Hosted delivery requires Supabase Auth/Cron
 and Resend secrets; candidate biographies, ballot AI, additional sub-county
 boundaries, and saved voting plans remain future phases.
+
+## Meta AI translation
+
+PollPal can translate its voter-facing interface and dynamic ballot information
+with Meta's `facebook/nllb-200-distilled-600M` model. The browser batches visible
+English text through the PollPal backend, which keeps the inference credential
+private, caches successful translations, and falls back to English if inference
+is unavailable. Candidate names, voter addresses, email addresses, and official
+source URLs are never sent for translation.
+
+To enable translation locally:
+
+1. Create a Hugging Face token with **Inference Providers** permission.
+2. Copy `backend/.env.example` to `backend/.env` and set `HF_TOKEN`.
+3. Start the backend and frontend normally, then use the language selector in
+   the header.
+
+The included NLLB checkpoint is licensed CC BY-NC 4.0 and its model card calls
+it a research model rather than a production or legal-domain system. PollPal
+therefore labels translations as machine-generated, keeps original English
+available, and links to authoritative election sources. Review the license and
+translation quality before any commercial or production deployment.

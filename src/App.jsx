@@ -8,6 +8,8 @@ import Footer from './components/Footer'
 import Home from './pages/Home'
 import Profile from './pages/Profile'
 import AuthProvider from './context/AuthProvider'
+import TranslationProvider from './context/TranslationProvider'
+import TranslationNotice from './components/TranslationNotice'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -28,22 +30,25 @@ function App() {
   const onSearch = (address) => setSearch((previous) => ({ address, attempt: previous.attempt + 1 }))
 
   return (
-    <AuthProvider>
-      <div className="min-h-screen flex flex-col">
-        <ScrollToTop />
-        <Header />
-        <main className="flex-1">
-          <Routes>
-            <Route path="/" element={<Home search={search} onSearch={onSearch} />} />
-            <Route path="/map" element={<BallotMap search={search} onSearch={onSearch} />} />
-            <Route path="/candidates" element={<Candidates search={search} onSearch={onSearch} />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/profile" element={<Profile />} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
-    </AuthProvider>
+    <TranslationProvider>
+      <AuthProvider>
+        <div className="min-h-screen flex flex-col">
+          <ScrollToTop />
+          <Header />
+          <TranslationNotice />
+          <main className="flex-1">
+            <Routes>
+              <Route path="/" element={<Home search={search} onSearch={onSearch} />} />
+              <Route path="/map" element={<BallotMap search={search} onSearch={onSearch} />} />
+              <Route path="/candidates" element={<Candidates search={search} onSearch={onSearch} />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/profile" element={<Profile />} />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
+      </AuthProvider>
+    </TranslationProvider>
   )
 }
 
