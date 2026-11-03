@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files (API keys). Keep only the example committed.
+.env
+.env.*
+!.env.example
