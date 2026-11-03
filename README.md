@@ -41,6 +41,8 @@ PollPal does not register people, verify official registration status, cast ball
 - [Product specification](docs/PRODUCT_SPEC.md)
 - [Architecture and data model](docs/ARCHITECTURE.md)
 - [Six-day build plan](docs/BUILD_PLAN.md)
+- [Frontend API integration guide](docs/FRONTEND_API_GUIDE.md)
+- [Washington backend and ingestion guide](docs/BACKEND_WASHINGTON.md)
 
 ## Status
 
