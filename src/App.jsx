@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import BallotMap from './pages/BallotMap';
 import Candidates from './pages/Candidates';
 import Login from './components/Login';
 import Footer from './components/Footer';
-import home from './pages/home';
+import Home from './pages/Home';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -26,7 +27,7 @@ function App() {
       <Header onLoginClick ={() => setIsLoggedIn(true)} />
         <main className="flex-1">
           <Routes>
-            <Route path="/" element={<home />} />
+            <Route path="/" element={<Home />} />
             <Route path="/map" element={<BallotMap />} />
             <Route path="/candidates" element={<Candidates />} />
             <Route path="/login" element={<Login onLogin={() => setIsLoggedIn(true)} />} />
