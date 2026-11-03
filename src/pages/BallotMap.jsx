@@ -122,8 +122,40 @@ function BallotMap({ search, onSearch }) {
                 Also show voting centers and election offices
               </label>
 
+              {locations[0]?.distance != null && (
+                <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                    Closest to your address · {locations[0].distance.toFixed(1)} mi
+                  </p>
+                  <p className="mt-1 font-semibold text-slate-900">{locations[0].name}</p>
+                  <p className="text-sm text-slate-600">
+                    {[locations[0].address, locations[0].city].filter(Boolean).join(', ')}
+                  </p>
+                  <div className="mt-2 flex gap-4 text-sm font-medium">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(locations[0].id)}
+                      className="text-blue-700 hover:underline"
+                    >
+                      Show on map
+                    </button>
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+                        [locations[0].address, locations[0].city, 'WA', locations[0].postalCode].filter(Boolean).join(', '),
+                      )}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-700 hover:underline"
+                    >
+                      Get directions
+                    </a>
+                  </div>
+                </div>
+              )}
+
               <p className="mt-3 text-xs text-slate-500">
-                Sorted by distance from your address. Check with your county which locations you can use.
+                Sorted by straight-line distance from your address. Check with your county which locations you can
+                use.
               </p>
 
               {locations.length === 0 ? (
@@ -145,11 +177,9 @@ function BallotMap({ search, onSearch }) {
                       >
                         <span className="flex items-start justify-between gap-2">
                           <span className="font-semibold text-slate-900">{location.name}</span>
-                          {location.distance != null && (
-                            <span className="shrink-0 text-xs font-medium text-slate-500">
-                              {location.distance.toFixed(1)} mi
-                            </span>
-                          )}
+                          <span className="shrink-0 text-xs font-medium text-slate-500">
+                            {location.distance != null ? `${location.distance.toFixed(1)} mi` : 'Distance unknown'}
+                          </span>
                         </span>
                         <span className="mt-1 block text-sm text-slate-600">
                           {[location.address, location.city, location.postalCode].filter(Boolean).join(', ')}

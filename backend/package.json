@@ -10,7 +10,8 @@
     "ingest:wa:sos": "node scripts/ingest-wa-sos.js",
     "ingest:wa:boundaries": "node scripts/import-wa-boundaries.js",
     "ingest:wa:counties": "node scripts/ingest-wa-counties.js",
-    "ingest:wa:candidates": "node scripts/ingest-wa-candidates.js"
+    "ingest:wa:candidates": "node scripts/ingest-wa-candidates.js",
+    "geocode:wa:locations": "node scripts/geocode-wa-locations.js"
   },
   "dependencies": {
     "cheerio": "1.2.0",

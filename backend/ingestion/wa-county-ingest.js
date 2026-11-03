@@ -104,7 +104,13 @@ async function replaceLocations(client, { adapter, election, jurisdictionId, sou
          drive_up = excluded.drive_up,
          opens_on = excluded.opens_on,
          closes_on = excluded.closes_on,
-         geometry = excluded.geometry,
+         -- Keep coordinates added by the geocode step unless the source now supplies its own
+         -- or the address changed.
+         geometry = case
+           when excluded.geometry is not null then excluded.geometry
+           when excluded.address is distinct from voting_locations.address then null
+           else voting_locations.geometry
+         end,
          source_id = excluded.source_id,
          verified_at = excluded.verified_at,
          updated_at = now()`,
