@@ -1,6 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import ZipForm from '../components/ZipForm'
+import AddressForm from '../components/AddressForm'
 import { useElections } from '../lib/useElections'
 import { distanceMiles, formatDate, formatTime, todayString } from '../lib/format'
 
@@ -30,11 +29,9 @@ function byDistance(a, b) {
   return a.distance - b.distance
 }
 
-function BallotMap() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const rawZip = searchParams.get('zip') ?? ''
-  const zip = /^\d{5}$/.test(rawZip) ? rawZip : ''
-  const { loading, data, error } = useElections(zip)
+function BallotMap({ search, onSearch }) {
+  const { address } = search
+  const { loading, data, error } = useElections(search)
   const [showAllTypes, setShowAllTypes] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
 
@@ -74,12 +71,12 @@ function BallotMap() {
       </div>
 
       <div className="mt-6 max-w-xl">
-        <ZipForm
-          key={zip}
-          id="map-zip"
-          initialZip={zip}
+        <AddressForm
+          key={address}
+          id="map-address"
+          initialAddress={address}
           buttonLabel="Find locations"
-          onSubmit={(nextZip) => setSearchParams({ zip: nextZip })}
+          onSubmit={onSearch}
           hint="Currently covers Washington state."
         />
       </div>
@@ -98,7 +95,9 @@ function BallotMap() {
             </Suspense>
           ) : (
             <div className="flex h-full min-h-[320px] items-center justify-center p-6 text-center text-sm text-slate-500">
-              {loading ? `Looking up locations near ${zip}…` : 'Enter your ZIP code to see drop-off locations on the map.'}
+              {loading
+                ? 'Looking up locations near your address…'
+                : 'Enter your address to see drop-off locations on the map.'}
             </div>
           )}
         </div>
@@ -123,16 +122,13 @@ function BallotMap() {
                 Also show voting centers and election offices
               </label>
 
-              {data.query?.precision === 'zip_centroid' && (
-                <p className="mt-3 text-xs text-slate-500">
-                  Sorted by distance from the center of ZIP code {zip}. Check with your county which
-                  locations you can use.
-                </p>
-              )}
+              <p className="mt-3 text-xs text-slate-500">
+                Sorted by distance from your address. Check with your county which locations you can use.
+              </p>
 
               {locations.length === 0 ? (
                 <p className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-                  No drop-off locations are listed for this ZIP code yet. Location data currently covers
+                  No drop-off locations are listed for this address yet. Location data currently covers
                   King, Snohomish, Benton and Franklin counties.
                 </p>
               ) : (

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import Header from './components/Header'
 import BallotMap from './pages/BallotMap'
@@ -19,6 +19,13 @@ function ScrollToTop() {
 }
 
 function App() {
+  // The address a person searched for. It lives only in memory (not in the page URL or
+  // browser storage), so it is shared between pages but cleared when the page is refreshed.
+  // `attempt` goes up on every search, so searching the same address again re-runs the lookup
+  // (useful after fixing a backend error).
+  const [search, setSearch] = useState({ address: '', attempt: 0 })
+  const onSearch = (address) => setSearch((previous) => ({ address, attempt: previous.attempt + 1 }))
+
   return (
     <AuthProvider>
       <div className="min-h-screen flex flex-col">
@@ -26,8 +33,8 @@ function App() {
         <Header />
         <main className="flex-1">
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/map" element={<BallotMap />} />
+            <Route path="/" element={<Home search={search} onSearch={onSearch} />} />
+            <Route path="/map" element={<BallotMap search={search} onSearch={onSearch} />} />
             <Route path="/candidates" element={<Candidates />} />
             <Route path="/login" element={<Login />} />
           </Routes>

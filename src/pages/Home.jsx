@@ -1,9 +1,9 @@
-import { Link, useSearchParams } from 'react-router-dom'
-import ZipForm from '../components/ZipForm'
+import { Link } from 'react-router-dom'
+import AddressForm from '../components/AddressForm'
 import { useElections } from '../lib/useElections'
 import { formatDate, todayString } from '../lib/format'
 
-function ElectionCard({ election, zip }) {
+function ElectionCard({ election }) {
   const today = todayString()
   const upcomingDates = (election.milestones ?? []).filter((milestone) => milestone.occursOn >= today)
 
@@ -41,13 +41,13 @@ function ElectionCard({ election, zip }) {
         </div>
         <div className="flex shrink-0 gap-2">
           <Link
-            to={`/candidates?zip=${zip}`}
+            to="/candidates"
             className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
           >
             See candidates
           </Link>
           <Link
-            to={`/map?zip=${zip}`}
+            to="/map"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Drop-off sites
@@ -74,32 +74,24 @@ function ElectionCard({ election, zip }) {
   )
 }
 
-function Results({ data, zip }) {
+function Results({ data, address }) {
   const elections = data.elections ?? []
-  const isApproximate = data.query?.precision === 'zip_centroid'
 
   return (
     <div>
       <h2 className="text-lg font-semibold text-slate-900">
-        Elections for {data.normalizedLocation ?? `ZIP ${zip}`}
+        Elections for {data.normalizedLocation ?? address}
       </h2>
-
-      {isApproximate && (
-        <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          These results are for the center of ZIP code {zip}. A ZIP code can cover more than one
-          district, so some local races may be different at your exact address.
-        </p>
-      )}
 
       {elections.length === 0 ? (
         <p className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-          We didn&apos;t find upcoming elections for this ZIP code in our data. That doesn&apos;t
+          We didn&apos;t find upcoming elections for this address in our data. That doesn&apos;t
           mean none are scheduled. Check with your county elections office.
         </p>
       ) : (
         <ul className="mt-4 space-y-3">
           {elections.map((election) => (
-            <ElectionCard key={election.id} election={election} zip={zip} />
+            <ElectionCard key={election.id} election={election} />
           ))}
         </ul>
       )}
@@ -122,11 +114,9 @@ function Results({ data, zip }) {
   )
 }
 
-function Home() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const rawZip = searchParams.get('zip') ?? ''
-  const zip = /^\d{5}$/.test(rawZip) ? rawZip : ''
-  const { loading, data, error } = useElections(zip)
+function Home({ search, onSearch }) {
+  const { address } = search
+  const { loading, data, error } = useElections(search)
 
   return (
     <div className="bg-gradient-to-b from-blue-50 to-slate-50">
@@ -137,17 +127,17 @@ function Home() {
             Find elections in your area
           </h1>
           <p className="mt-4 text-lg text-slate-600">
-            Enter your ZIP code to see the elections you can vote in.
+            Enter your address to see the elections you can vote in.
           </p>
         </div>
 
         <div className="mx-auto mt-10 max-w-3xl">
-          <ZipForm
-            key={zip}
-            id="zip"
-            initialZip={zip}
-            onSubmit={(nextZip) => setSearchParams({ zip: nextZip })}
-            hint="No account needed. Currently covers Washington state."
+          <AddressForm
+            key={address}
+            id="address"
+            initialAddress={address}
+            onSubmit={onSearch}
+            hint="No account needed. We use your address only to find your elections. Currently covers Washington state."
           />
         </div>
 
@@ -155,7 +145,7 @@ function Home() {
         <div className="mx-auto mt-10 max-w-3xl" aria-live="polite">
           {loading && (
             <p role="status" className="text-sm text-slate-600">
-              Looking up elections for {zip}…
+              Looking up elections for your address…
             </p>
           )}
           {error && (
@@ -163,7 +153,7 @@ function Home() {
               {error.message}
             </div>
           )}
-          {data && <Results data={data} zip={zip} />}
+          {data && <Results data={data} address={address} />}
         </div>
 
         {/* Other features */}
@@ -171,7 +161,7 @@ function Home() {
           <h2 className="mb-3 text-sm font-medium text-slate-500">More tools</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <Link
-              to={zip ? `/map?zip=${zip}` : '/map'}
+              to="/map"
               className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-300"
             >
               <p className="font-semibold text-slate-900">Ballot drop-off map</p>
@@ -181,7 +171,7 @@ function Home() {
               <span className="mt-3 inline-block text-sm font-medium text-blue-700">Open the map</span>
             </Link>
             <Link
-              to={zip ? `/candidates?zip=${zip}` : '/candidates'}
+              to="/candidates"
               className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-300"
             >
               <p className="font-semibold text-slate-900">Candidate information</p>

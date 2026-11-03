@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, NavLink, useSearchParams } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 
 const links = [
@@ -10,12 +10,7 @@ const links = [
 
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [searchParams] = useSearchParams()
   const { user, signOut } = useAuth()
-
-  // Keep the searched ZIP code when moving between pages.
-  const zip = searchParams.get('zip')
-  const withZip = (path) => (zip && /^\d{5}$/.test(zip) ? `${path}?zip=${zip}` : path)
 
   const linkClass = ({ isActive }) =>
     `text-sm font-medium pb-1 border-b-2 ${
@@ -38,7 +33,7 @@ function Header() {
 
         <nav className="hidden items-center gap-8 md:flex">
           {links.map((link) => (
-            <NavLink key={link.to} to={withZip(link.to)} end className={linkClass}>
+            <NavLink key={link.to} to={link.to} end className={linkClass}>
               {link.label}
             </NavLink>
           ))}
@@ -83,7 +78,7 @@ function Header() {
           {links.map((link) => (
             <NavLink
               key={link.to}
-              to={withZip(link.to)}
+              to={link.to}
               end
               onClick={() => setMenuOpen(false)}
               className={({ isActive }) =>

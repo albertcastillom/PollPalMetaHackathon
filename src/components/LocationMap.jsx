@@ -17,7 +17,7 @@ function buildPopup(location) {
   return new mapboxgl.Popup({ offset: 28 }).setDOMContent(wrapper)
 }
 
-// Mapbox map with one marker per location and a dark dot for the center of the searched ZIP.
+// Mapbox map with one marker per location and a dark dot for the searched address.
 // `onSelect` should be a stable function (for example a useState setter).
 function LocationMap({ center, locations, selectedId, onSelect }) {
   const containerRef = useRef(null)
@@ -55,7 +55,7 @@ function LocationMap({ center, locations, selectedId, onSelect }) {
 
     if (center) {
       const dot = document.createElement('div')
-      dot.title = 'Center of your ZIP code'
+      dot.title = 'Your address'
       dot.style.cssText =
         'width:16px;height:16px;border-radius:9999px;background:#0f172a;border:3px solid #ffffff;box-shadow:0 0 0 1px #0f172a;'
       const lngLat = [center.longitude, center.latitude]
