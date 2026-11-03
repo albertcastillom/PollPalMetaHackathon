@@ -138,7 +138,22 @@ export function createWashingtonRepository(pool) {
     async findContests(electionIds, jurisdictionIds) {
       if (electionIds.length === 0 || jurisdictionIds.length === 0) return []
       const { rows } = await pool.query(
-        `select c.*, jsonb_build_object('publisher', s.publisher, 'url', s.url) as source
+        `select c.*, jsonb_build_object('publisher', s.publisher, 'url', s.url) as source,
+           coalesce((
+             select jsonb_agg(jsonb_build_object(
+               'id', candidate.id,
+               'externalId', candidate.external_id,
+               'name', candidate.name,
+               'party', candidate.party,
+               'ballotOrder', candidate.ballot_order,
+               'filingStatus', candidate.filing_status,
+               'profileUrl', candidate.profile_url,
+               'verifiedAt', candidate.verified_at
+             ) order by candidate.ballot_order nulls last, candidate.name)
+             from public.contest_candidates candidate
+             where candidate.contest_id = c.id
+               and candidate.filing_status = 'active'
+           ), '[]'::jsonb) as candidates
          from public.contests c
          join public.sources s on s.id = c.source_id
          where c.election_id = any($1)
@@ -155,6 +170,7 @@ export function createWashingtonRepository(pool) {
         description: row.description,
         url: row.url,
         metadata: row.metadata,
+        candidates: row.candidates,
         source: row.source,
         verifiedAt: row.verified_at,
       }))

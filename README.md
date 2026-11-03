@@ -46,4 +46,8 @@ PollPal does not register people, verify official registration status, cast ball
 
 ## Status
 
-Planning. Development is scheduled to begin October 30, 2026.
+Washington election discovery, four county adapters, official VoteWA candidate
+ingestion, authenticated reminder subscriptions, schedule materialization, and
+the Resend worker are implemented. Hosted delivery requires Supabase Auth/Cron
+and Resend secrets; candidate biographies, ballot AI, additional sub-county
+boundaries, and saved voting plans remain future phases.

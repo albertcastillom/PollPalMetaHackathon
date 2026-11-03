@@ -279,19 +279,34 @@ Important frontend behavior:
 
 ### `contests`
 
-Contest coverage is currently partial. The array can contain known measures and
-links to authoritative ballot resources.
+Contest coverage is currently partial. The array can contain candidate races,
+known measures, and links to authoritative ballot resources.
 
 ```json
 {
   "id": "database UUID",
   "externalId": "stable external identifier",
   "electionId": "election database UUID",
-  "type": "ballot_resource",
-  "title": "Sample ballot",
-  "description": null,
-  "url": "https://official-county-source.example/sample-ballot",
-  "metadata": {},
+  "type": "candidate_race",
+  "title": "U.S. Representative",
+  "description": "Congressional: Congressional District 1",
+  "url": "https://voter.votewa.gov/CandidateList.aspx?e=899",
+  "metadata": {
+    "districtType": "Congressional",
+    "district": "Congressional District 1"
+  },
+  "candidates": [
+    {
+      "id": "database UUID",
+      "externalId": "stable external identifier",
+      "name": "Candidate Name",
+      "party": "Democratic",
+      "ballotOrder": null,
+      "filingStatus": "active",
+      "profileUrl": null,
+      "verifiedAt": "2026-11-03T07:06:14.600Z"
+    }
+  ],
   "source": {
     "publisher": "Benton County Elections",
     "url": "https://official-county-source.example"
@@ -306,11 +321,11 @@ Possible contest types are:
 - `measure`
 - `ballot_resource`
 
-The backend does not yet provide complete candidate names, parties,
-biographies, or issue positions. The current Candidates page should therefore
-render official ballot resources and known measures, or show a clearly labeled
-partial-coverage state. Do not turn a `ballot_resource` into a fake candidate
-card.
+Candidate names and party preferences come from the official VoteWA candidate
+list. `party`, `ballotOrder`, and `profileUrl` can be `null`; VoteWA does not
+publish ballot order in every pre-election export, and PollPal does not yet
+ingest biographies or issue positions. Always group candidate cards under their
+parent `candidate_race`. Do not turn a `ballot_resource` into a candidate card.
 
 ### `coverage`
 
@@ -438,31 +453,134 @@ const data = await findElections({
 
 ### Candidates page
 
-- Treat the page as “What's on the ballot” for now.
+- Render `candidate_race` records as race sections and use each record's
+  `candidates` array for the cards within it.
+- Display `party` only when it is non-null. Treat `profileUrl: null` as “no
+  profile available,” not as an error.
 - Render `measure` records as ballot items.
 - Render `ballot_resource` records as official outbound links.
 - Show a partial-coverage notice when the county's `contests` coverage is not
   `complete`.
-- Candidate profile cards are not supported by the current API.
+- Link to the contest's official `url` for source verification. Candidate
+  biographies and policy comparisons are not yet supported.
 
 ### Login and reminders
 
-The current login UI is visual-only. There are no backend endpoints yet for
-authentication, saved locations, subscriptions, reminders, or email delivery.
-Hide these actions, disable them, or label them “coming soon” until those APIs
-exist.
+PollPal now uses Supabase Auth for the user session and the Express API for
+reminder management. The frontend should sign users in with a Supabase email
+magic link, read the session access token, and send it as a bearer token:
+
+```http
+Authorization: Bearer <supabase-access-token>
+```
+
+The backend validates that token against Supabase Auth. A user must have a
+verified email before subscribing. Never send the Supabase secret/service key
+to the browser; the frontend uses only the project's publishable key.
+
+#### List the current user's subscriptions
+
+```http
+GET /api/reminders
+Authorization: Bearer <supabase-access-token>
+```
+
+```json
+{
+  "subscriptions": [
+    {
+      "id": "subscription-uuid",
+      "electionId": "election-uuid",
+      "electionName": "2026 Washington General Election",
+      "status": "active",
+      "timezone": "America/Los_Angeles",
+      "preferences": [
+        { "kind": "election_day", "offsetDays": 1, "enabled": true }
+      ],
+      "schedules": [
+        {
+          "id": "schedule-uuid",
+          "milestoneId": "milestone-uuid",
+          "scheduledFor": "2026-11-02T17:00:00.000Z",
+          "status": "pending",
+          "attemptCount": 0
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Create or replace an election subscription
+
+Use the `elections[].id` returned by `POST /api/elections`.
+
+```http
+POST /api/reminders
+Authorization: Bearer <supabase-access-token>
+Content-Type: application/json
+
+{
+  "electionId": "election-uuid",
+  "timezone": "America/Los_Angeles",
+  "preferences": [
+    { "kind": "registration_online_mail_deadline", "offsetDays": 7 },
+    { "kind": "voting_period_start", "offsetDays": 0 },
+    { "kind": "election_day", "offsetDays": 1 }
+  ]
+}
+```
+
+Supported kinds are `voting_period_start`,
+`registration_online_mail_deadline`, `registration_in_person_deadline`,
+`ballot_return_deadline`, and `election_day`. `offsetDays` is an integer from 0
+through 30. Reposting the same election replaces that subscription's
+preferences and regenerates its future schedule.
+
+The `201` response contains the subscription id and a user-scoped unsubscribe
+URL. The URL is also included in reminder email.
+
+#### Unsubscribe while signed in
+
+```http
+DELETE /api/reminders/<subscription-id>
+Authorization: Bearer <supabase-access-token>
+```
+
+Success returns `204 No Content` and cancels unsent reminders.
+
+#### Unsubscribe from an email link
+
+The frontend route `/unsubscribe?token=...` should display a confirmation
+screen and then submit the token. Do not unsubscribe on the initial page load;
+email security scanners often open links automatically.
+
+```http
+POST /api/reminders/unsubscribe
+Content-Type: application/json
+
+{ "token": "token-from-query-string" }
+```
+
+The response is always `{ "unsubscribed": true }`, even for an expired or
+already-used token, so the endpoint does not reveal subscription state.
 
 ## Current limitations
 
 - Washington is the only supported state.
 - County location adapters currently cover King, Snohomish, Benton, and
   Franklin counties.
-- Contest coverage is partial and is not yet personalized to an exact ballot.
+- Candidate coverage includes statewide, congressional, legislative,
+  countywide, and city/town races that can be matched to an imported boundary.
+  Port, PUD, school, fire, county-council, and other sub-county districts remain
+  excluded until their exact boundaries are imported, so contest coverage is
+  still marked `partial`.
 - ZIP-only lookup is not a supported API contract.
 - Location distance and nearest-location ranking are not implemented.
 - Most non-King location records do not yet contain coordinates.
-- Authentication, reminders, election results, and AI ballot explanations are
-  not implemented.
+- Saved home locations, election results, and AI ballot explanations are not
+  implemented. Authentication and reminder APIs are implemented; hosted email
+  delivery additionally requires the Phase 3 worker secrets and Cron job.
 - Upcoming-election queries exclude elections before the database's current
   date. After an election passes, the next election must be ingested before it
   can appear in the frontend.
