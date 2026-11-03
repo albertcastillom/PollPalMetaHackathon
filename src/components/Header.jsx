@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useSearchParams } from 'react-router-dom'
+import { useAuth } from '../context/useAuth'
 
 const links = [
   { label: 'Find Elections', to: '/' },
@@ -7,8 +8,14 @@ const links = [
   { label: 'Candidates', to: '/candidates' },
 ]
 
-function Header({ onLoginClick }) {
+function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [searchParams] = useSearchParams()
+  const { user, signOut } = useAuth()
+
+  // Keep the searched ZIP code when moving between pages.
+  const zip = searchParams.get('zip')
+  const withZip = (path) => (zip && /^\d{5}$/.test(zip) ? `${path}?zip=${zip}` : path)
 
   const linkClass = ({ isActive }) =>
     `text-sm font-medium pb-1 border-b-2 ${
@@ -31,19 +38,34 @@ function Header({ onLoginClick }) {
 
         <nav className="hidden items-center gap-8 md:flex">
           {links.map((link) => (
-            <NavLink key={link.to} to={link.to} end className={linkClass}>
+            <NavLink key={link.to} to={withZip(link.to)} end className={linkClass}>
               {link.label}
             </NavLink>
           ))}
         </nav>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={onLoginClick}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
-          >
-            Log in
-          </button>
+          {user ? (
+            <>
+              <span className="hidden max-w-[10rem] truncate text-sm text-slate-600 sm:inline" title={user.email}>
+                {user.email}
+              </span>
+              <button
+                type="button"
+                onClick={signOut}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+              >
+                Log out
+              </button>
+            </>
+          ) : (
+            <Link
+              to="/login"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+            >
+              Log in
+            </Link>
+          )}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden"
@@ -61,7 +83,7 @@ function Header({ onLoginClick }) {
           {links.map((link) => (
             <NavLink
               key={link.to}
-              to={link.to}
+              to={withZip(link.to)}
               end
               onClick={() => setMenuOpen(false)}
               className={({ isActive }) =>
