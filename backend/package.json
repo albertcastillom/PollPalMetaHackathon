@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "node --watch server.js",
     "start": "node server.js",
-    "test": "node --test ingestion/*.test.js services/*.test.js services/**/*.test.js",
+    "test": "node --test ingestion/*.test.js routes/*.test.js services/*.test.js services/**/*.test.js",
     "ingest:wa:sos": "node scripts/ingest-wa-sos.js",
     "ingest:wa:boundaries": "node scripts/import-wa-boundaries.js",
-    "ingest:wa:counties": "node scripts/ingest-wa-counties.js"
+    "ingest:wa:counties": "node scripts/ingest-wa-counties.js",
+    "ingest:wa:candidates": "node scripts/ingest-wa-candidates.js"
   },
   "dependencies": {
     "cheerio": "1.2.0",

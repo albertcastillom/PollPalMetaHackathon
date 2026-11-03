@@ -34,6 +34,7 @@ supabase db reset
 cd backend
 npm run ingest:wa:sos -- 2026
 npm run ingest:wa:boundaries
+npm run ingest:wa:candidates -- 2026 general 899
 npm run dev
 ```
 
@@ -120,6 +121,84 @@ returns the official ballot resource instead of inferring missing contests.
 Current Phase 2 sources include King County's official ballot-drop-box GIS
 layer and the official election/location pages maintained by Snohomish, Benton,
 and Franklin counties.
+
+## Candidate ingestion
+
+PollPal imports the official VoteWA CSV candidate list outside request time and
+stores normalized races and candidates in Postgres. The current adapters cover
+King, Snohomish, Benton, and Franklin counties, including Bothell and the
+Tri-Cities. The same statewide, congressional, or legislative candidate can
+appear in multiple county exports; ingestion groups and de-duplicates those
+records before writing them.
+
+```sh
+cd backend
+npm run ingest:wa:candidates -- 2026 general 899
+```
+
+The final number is VoteWA's election id. Known 2026 defaults are configured in
+the script (`899` general and `898` primary), so it can be omitted for those
+elections. Run the SOS calendar ingestion first so the matching election exists.
+
+The importer persists names, party preferences, filing status, optional ballot
+order, source, and verification time. It deliberately discards mailing
+addresses, phone numbers, and email addresses from the source export. Only
+active candidates are exposed by `POST /api/elections` under each
+`candidate_race` record's `candidates` array.
+
+Coverage remains partial. PollPal currently matches only jurisdiction types for
+which it has safe address-resolution boundaries: state Supreme Court,
+congressional, legislative, countywide, and city/town races. It excludes port,
+PUD, school, fire, county-council, and similar district races until their exact
+boundaries are imported.
+
+## Phase 3 reminders
+
+Phase 3 adds Supabase Auth-backed reminder subscriptions and a Resend delivery
+worker. The database migration creates owner-scoped subscriptions and
+preferences, materialized schedules, delivery history, RLS policies, explicit
+Data API grants, and service-role-only claim/completion functions.
+
+Required Express environment variables:
+
+```sh
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+UNSUBSCRIBE_TOKEN_SECRET=a-random-secret-with-at-least-32-characters
+APP_URL=http://localhost:5173
+```
+
+The frontend signs in through Supabase Auth and sends the session access token
+to `GET`, `POST`, and `DELETE /api/reminders` as a bearer token. See
+`docs/FRONTEND_API_GUIDE.md` for request and response examples.
+
+The worker lives at `supabase/functions/reminder-worker/index.ts`. Configure
+these hosted Edge Function secrets before deploying it:
+
+```sh
+RESEND_API_KEY=re_...
+REMINDER_FROM_EMAIL="PollPal <reminders@your-verified-domain.example>"
+REMINDER_CRON_SECRET=a-second-random-secret
+UNSUBSCRIBE_TOKEN_SECRET=the-same-value-used-by-the-express-api
+APP_URL=https://your-frontend.example
+REMINDER_RECIPIENT_ALLOWLIST=demo@example.com
+```
+
+Supabase injects `SUPABASE_URL` and `SUPABASE_SECRET_KEYS` into the hosted Edge
+Function automatically; do not create or commit those values yourself.
+
+`REMINDER_RECIPIENT_ALLOWLIST` is optional but recommended during development.
+Deploy the function, store its invocation credential in Supabase Vault, and
+schedule one hourly invocation with Supabase Cron. Send the
+`x-cron-secret: <REMINDER_CRON_SECRET>` header. Do not commit any of these
+values or expose the secret key in the frontend.
+
+The worker atomically claims at most 25 due reminders, uses each schedule's
+stable idempotency key with Resend, records every attempt, and retries failures
+with bounded backoff up to three attempts. Claims left behind by a crashed
+worker are recoverable after 15 minutes. Unsubscribe cancels unsent work. When
+an official milestone revision changes, future unsent schedules are
+recalculated by a database trigger.
 
 ## Privacy
 

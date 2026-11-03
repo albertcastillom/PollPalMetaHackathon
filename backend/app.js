@@ -3,8 +3,15 @@ import express from 'express'
 import helmet from 'helmet'
 
 import { createElectionRouter } from './routes/elections.js'
+import { createReminderRouter } from './routes/reminders.js'
 
-export function createApp({ electionService, clientOrigin = 'http://localhost:5173' }) {
+export function createApp({
+  electionService,
+  authVerifier,
+  reminderRepository,
+  clientOrigin = 'http://localhost:5173',
+  appUrl = 'http://localhost:5173',
+}) {
   const app = express()
 
   app.disable('x-powered-by')
@@ -17,6 +24,7 @@ export function createApp({ electionService, clientOrigin = 'http://localhost:51
   })
 
   app.use('/api/elections', createElectionRouter({ electionService }))
+  app.use('/api/reminders', createReminderRouter({ authVerifier, reminderRepository, appUrl }))
 
   app.use((error, _request, response, _next) => {
     void _next
@@ -30,7 +38,7 @@ export function createApp({ electionService, clientOrigin = 'http://localhost:51
     response.status(status).json({
       error: {
         code,
-        message: status >= 500 ? 'Election information is temporarily unavailable.' : error.message,
+        message: status >= 500 ? 'PollPal is temporarily unavailable.' : error.message,
       },
     })
   })

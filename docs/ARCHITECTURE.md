@@ -12,7 +12,7 @@
 | Auth | Supabase Auth with `@supabase/ssr` | Cookie sessions and low-friction magic-link sign-in. |
 | Scheduling | Supabase Cron + one Edge Function | Hourly, observable processing of due reminders near the stored data. |
 | Email | Resend for the hackathon | Simple transactional API, domain verification, delivery events, and unsubscribe support. |
-| Election data | Google Civic Information API + official jurisdiction sources | Address-based data where supported, supplemented by authoritative state/local information. |
+| Election data | Owned Washington pipeline + official state/county sources | Stable address-based data without relying on the deprecated Google Civic voter endpoint. |
 | Maps | Mapbox | Geocoding, maps, markers, and directions handoff. |
 | AI | Meta Model API, `muse-spark-1.3`, Responses API | Structured extraction and sourced explanations without making the UI chatbot-first. |
 | Deployment | AWS Amplify Hosting | Managed Next.js 15 SSR, API routes, CDN, environment variables, and logs. |
@@ -57,11 +57,11 @@ No single public API is guaranteed to provide every local, special, state, and f
 
 For the hackathon:
 
-1. Use Google Civic election and voter-information data where available.
-2. Curate one authoritative demo jurisdiction from its state/county/city election authority.
-3. Normalize live and fixture data into the same PollPal domain types.
+1. Resolve addresses to coordinates, then match owned Washington jurisdiction boundaries.
+2. Ingest official Washington and county sources outside user request time.
+3. Normalize every adapter into the same PollPal domain types.
 4. Show a visible source and `verified_at` time for every election and milestone.
-5. Use an explicitly labeled fixture when a provider is unavailable; never silently substitute it for live data.
+5. Report partial or stale coverage explicitly; never silently invent missing data.
 
 Post-hackathon, add jurisdiction-specific adapters and a review queue for changed dates or conflicting sources.
 
@@ -131,7 +131,7 @@ Preferred source order:
 ### Ballot data
 
 - `contests(id, election_id, external_id, type, title, district)`
-- `options(id, contest_id, external_id, name, party, image_url)`
+- `contest_candidates(id, contest_id, external_id, name, party, ballot_order, filing_status, profile_url, source_id, verified_at)`
 - `claims(id, option_id, topic, text, confidence, generated_at)`
 - `claim_sources(claim_id, source_id, evidence_excerpt)`
 
@@ -197,13 +197,17 @@ Returns election details, milestones, official links, ballot availability, and a
 
 Returns normalized voting and return locations. Filters by type/date and clearly describes applicability.
 
-### `POST /api/reminders/subscribe`
+### `POST /api/reminders`
 
-Creates a pending or verified subscription, preferences, and future schedule. Rate-limited and protected from address/email enumeration.
+Creates or replaces a verified user's subscription, preferences, and future
+schedule. Requires a Supabase access token and never accepts an email address
+from the request body.
 
-### `POST /api/reminders/preferences` and `GET /unsubscribe/[token]`
+### `GET /api/reminders`, `DELETE /api/reminders/:id`, and `POST /api/reminders/unsubscribe`
 
-Updates reminder choices or disables the scoped subscription.
+Lists owner-scoped reminder state or disables a subscription. Email links open
+a confirmation page before the frontend posts the token, avoiding accidental
+unsubscribe by link scanners.
 
 ### `POST /api/explain`
 
