@@ -6,12 +6,12 @@ const links = [
   { label: 'Find Elections', to: '/' },
   { label: 'Ballot Drop-Off', to: '/map' },
   { label: 'Candidates', to: '/candidates' },
+  { label: 'Profile', to: '/profile' },
 ]
 
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { user, signOut } = useAuth()
-  const navLinks = user ? [...links, { label: 'Profile', to: '/profile' }] : links
 
   const linkClass = ({ isActive }) =>
     `text-sm font-medium pb-1 border-b-2 ${
@@ -33,7 +33,7 @@ function Header() {
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
-          {navLinks.map((link) => (
+          {links.map((link) => (
             <NavLink key={link.to} to={link.to} end className={linkClass}>
               {link.label}
             </NavLink>
@@ -80,7 +80,7 @@ function Header() {
 
       {menuOpen && (
         <nav className="border-t border-slate-200 bg-white px-4 py-3 md:hidden">
-          {navLinks.map((link) => (
+          {links.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
