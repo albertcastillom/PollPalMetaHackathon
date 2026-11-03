@@ -20,7 +20,7 @@ async function withServer(router, callback) {
 
 test('returns supported public languages without exposing model language codes', async () => {
   const router = createTranslationRouter({
-    translationService: { isConfigured: true, model: 'facebook/nllb-200-distilled-600M' },
+    translationService: { isConfigured: true, model: 'muse-spark-1.3' },
   })
 
   await withServer(router, async (baseUrl) => {

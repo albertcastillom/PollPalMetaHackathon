@@ -12,9 +12,9 @@ export default function TranslationNotice() {
           {error ? (
             <T>Some text could not be translated. English is shown where a translation is unavailable.</T>
           ) : translating ? (
-            <T>Translating this page with Meta NLLB…</T>
+            <T>Translating this page with Meta Muse Spark…</T>
           ) : (
-            <T>Machine translated with Meta NLLB. The official English source remains authoritative.</T>
+            <T>Machine translated with Meta Muse Spark. The official English source remains authoritative.</T>
           )}
         </p>
         <button

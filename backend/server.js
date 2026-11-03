@@ -30,17 +30,13 @@ const authVerifier = createSupabaseAuthVerifier({
   publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY,
 })
 const museClient = createMuseClient({
-  apiKey: process.env.MUSE_API_KEY,
+  apiKey: process.env.MODEL_API_KEY || process.env.MUSE_API_KEY,
   baseUrl: process.env.MUSE_API_BASE_URL || undefined,
   model: process.env.MUSE_MODEL || undefined,
 })
-if (!museClient) console.warn('MUSE_API_KEY is not set: candidate comparisons will show official records only.')
+if (!museClient) console.warn('MODEL_API_KEY is not set: candidate comparisons and translations will use fallbacks.')
 const comparisonService = createCandidateComparisonService({ repository, model: museClient })
-const translationService = createTranslationService({
-  apiToken: process.env.HF_TOKEN,
-  model: process.env.TRANSLATION_MODEL,
-  endpoint: process.env.TRANSLATION_API_URL,
-})
+const translationService = createTranslationService({ modelClient: museClient })
 const app = createApp({
   electionService,
   authVerifier,

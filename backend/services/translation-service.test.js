@@ -3,29 +3,34 @@ import test from 'node:test'
 
 import { createTranslationService } from './translation-service.js'
 
-test('translates English text with Meta NLLB language codes and caches the result', async () => {
+test('translates a batch with Meta Muse Spark structured output and caches the results', async () => {
   const calls = []
   const service = createTranslationService({
-    apiToken: 'test-token',
-    fetchImpl: async (url, options) => {
-      calls.push({ url, options })
-      return new Response(JSON.stringify([{ translation_text: 'Hola votante' }]), { status: 200 })
+    modelClient: {
+      model: 'muse-spark-1.3',
+      async generateJson(request) {
+        calls.push(request)
+        return { translations: ['Hola votante', 'Día de las elecciones'] }
+      },
     },
   })
 
-  const first = await service.translate({ texts: ['Hello voter'], targetLanguage: 'es' })
-  const second = await service.translate({ texts: ['Hello voter'], targetLanguage: 'es' })
+  const source = ['Hello voter', 'Election Day']
+  const first = await service.translate({ texts: source, targetLanguage: 'es' })
+  const second = await service.translate({ texts: source, targetLanguage: 'es' })
 
-  assert.deepEqual(first, ['Hola votante'])
+  assert.deepEqual(first, ['Hola votante', 'Día de las elecciones'])
   assert.deepEqual(second, first)
   assert.equal(calls.length, 1)
-  const payload = JSON.parse(calls[0].options.body)
-  assert.equal(payload.parameters.src_lang, 'eng_Latn')
-  assert.equal(payload.parameters.tgt_lang, 'spa_Latn')
-  assert.match(calls[0].url, /facebook\/nllb-200-distilled-600M$/)
+  assert.equal(calls[0].schemaName, 'voter_information_translations')
+  assert.equal(calls[0].schema.properties.translations.minItems, 2)
+  assert.deepEqual(JSON.parse(calls[0].input), {
+    targetLanguage: 'Spanish',
+    sourceTexts: source,
+  })
 })
 
-test('reports a safe unavailable error when no inference token is configured', async () => {
+test('reports a safe unavailable error when Meta Model API is not configured', async () => {
   const service = createTranslationService()
 
   await assert.rejects(
@@ -36,8 +41,10 @@ test('reports a safe unavailable error when no inference token is configured', a
 
 test('returns English without calling the provider', async () => {
   const service = createTranslationService({
-    fetchImpl: async () => {
-      throw new Error('provider should not be called')
+    modelClient: {
+      async generateJson() {
+        throw new Error('provider should not be called')
+      },
     },
   })
 
