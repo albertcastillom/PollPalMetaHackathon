@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { parseVoteWaCandidateCsv } from './wa-candidate-adapter.js'
+import {
+  attachVoteWaCandidateGuideLinks,
+  parseVoteWaCandidateGuideLinks,
+  parseVoteWaCandidateProfile,
+  parseVoteWaCandidateCsv,
+} from './wa-candidate-adapter.js'
 
 const header = '"District Type","District","Race","Term Type","Term Length","Name","Mailing Address","Email","Phone","Filing Date","Party Preference","Status","Election Status","Ballot Order"\n'
 
@@ -43,4 +48,41 @@ test('accepts pre-ballot exports that do not include ballot order', () => {
 
   assert.equal(candidate.name, 'Jane Doe')
   assert.equal(candidate.ballotOrder, null)
+})
+
+test('extracts official voter-guide identifiers without retaining contact columns', () => {
+  const html = `<table><tr><td>Congressional</td><td>Congressional District 1</td><td>U.S. Representative</td><td>Regular</td><td>2</td><td><a href="/genericvoterguide.aspx?e=899&amp;c=17#/candidates/186947/1601889">Suzan DelBene</a></td><td>private address</td></tr></table>`
+  const links = parseVoteWaCandidateGuideLinks(html, { electionId: '899', countyCode: '17' })
+  const candidates = attachVoteWaCandidateGuideLinks([
+    { district: 'Congressional District 1', race: 'U.S. Representative', name: 'Suzan DelBene' },
+  ], links)
+
+  assert.equal(candidates[0].voterGuide.raceId, '186947')
+  assert.equal(candidates[0].voterGuide.ballotId, '1601889')
+  assert.equal(candidates[0].voterGuide.voterGuideUrl.includes('#/candidates/186947/1601889'), true)
+  assert.equal(JSON.stringify(candidates).includes('private address'), false)
+})
+
+test('maps a voter-guide profile into safe, labeled candidate-submitted fields', () => {
+  const profile = parseVoteWaCandidateProfile([{ statement: {
+    Statement: '<p><strong>Elected Experience</strong></p><p>City council.</p><p><strong>Other Professional Experience</strong></p><p>Teacher.</p><p><strong>Education</strong></p><p>State University.</p><p><strong>Community Service</strong></p><p>Food bank.</p><p><strong>Statement</strong></p><p>I am running to serve.</p>',
+    Photo: Buffer.from([0xff, 0xd8, 0xff, 0x00]).toString('base64'),
+    OrgWebsite: 'candidate.example',
+    OrgEmail: 'private@example.com',
+    OrgPhone: '555-0000',
+    OrgAddress: 'private address',
+    CandidateCode: 'CANDIDATE-1',
+    RaceJurisdictionTypeID: 'LEG',
+  } }], { voterGuideUrl: 'https://voter.votewa.gov/guide' })
+
+  assert.equal(profile.electedExperience, 'City council.')
+  assert.equal(profile.professionalExperience, 'Teacher.')
+  assert.equal(profile.education, 'State University.')
+  assert.equal(profile.communityService, 'Food bank.')
+  assert.equal(profile.statement, 'I am running to serve.')
+  assert.equal(profile.campaignWebsite, 'https://candidate.example/')
+  assert.deepEqual(profile.photo, Buffer.from([0xff, 0xd8, 0xff, 0x00]))
+  assert.equal(profile.photoMimeType, 'image/jpeg')
+  assert.equal(JSON.stringify(profile).includes('private@example.com'), false)
+  assert.equal(JSON.stringify(profile).includes('private address'), false)
 })

@@ -3,12 +3,14 @@ import express from 'express'
 import helmet from 'helmet'
 
 import { createElectionRouter } from './routes/elections.js'
+import { createCandidateRouter } from './routes/candidates.js'
 import { createReminderRouter } from './routes/reminders.js'
 
 export function createApp({
   electionService,
   authVerifier,
   reminderRepository,
+  candidateRepository,
   clientOrigin = 'http://localhost:5173',
   appUrl = 'http://localhost:5173',
 }) {
@@ -24,6 +26,7 @@ export function createApp({
   })
 
   app.use('/api/elections', createElectionRouter({ electionService }))
+  app.use('/api/candidates', createCandidateRouter({ candidateRepository }))
   app.use('/api/reminders', createReminderRouter({ authVerifier, reminderRepository, appUrl }))
 
   app.use((error, _request, response, _next) => {

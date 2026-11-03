@@ -279,6 +279,49 @@ Important frontend behavior:
 
 ### `contests`
 
+Candidate race entries include a `candidates` array. When the candidate has
+submitted an official voters' pamphlet profile, `profile` is populated:
+
+```json
+{
+  "id": "candidate UUID",
+  "name": "Candidate Name",
+  "party": "Democratic",
+  "profileUrl": "https://voter.votewa.gov/...",
+  "profile": {
+    "voterGuideUrl": "https://voter.votewa.gov/...",
+    "electedExperience": "Candidate-submitted text",
+    "professionalExperience": "Candidate-submitted text",
+    "education": "Candidate-submitted text",
+    "communityService": "Candidate-submitted text",
+    "statement": "Candidate-submitted statement",
+    "campaignWebsite": "https://candidate.example/",
+    "campaignFinanceUrl": "https://www.pdc.wa.gov/...",
+    "photoUrl": "/api/candidates/candidate UUID/photo",
+    "submitted": true,
+    "attribution": "Candidate-submitted information from the official Washington voters' guide.",
+    "disclaimer": "Candidate statements are not corrected or verified for truth or fact by the Washington Secretary of State.",
+    "verifiedAt": "2026-11-03T20:00:00.000Z"
+  }
+}
+```
+
+`profile` is `null` when no official profile was found. Treat every biography
+field and statement as candidate-submitted; the official source publishes but
+does not independently fact-check those claims.
+
+### `GET /api/candidates/:id`
+
+Returns one active candidate, its contest identity, filing information, and the
+same `profile` object shown above. No authentication is required. Invalid UUIDs
+return `400`; unknown or inactive candidates return `404`.
+
+### `GET /api/candidates/:id/photo`
+
+Returns the official candidate portrait as `image/jpeg`, `image/png`, or
+`image/webp`. A candidate without a submitted photo returns `404`. Use the
+`photoUrl` supplied by the API instead of constructing this URL manually.
+
 Contest coverage is currently partial. The array can contain candidate races,
 known measures, and links to authoritative ballot resources.
 

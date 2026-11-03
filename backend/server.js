@@ -30,6 +30,7 @@ const app = createApp({
   electionService,
   authVerifier,
   reminderRepository,
+  candidateRepository: repository,
   clientOrigin: process.env.CLIENT_ORIGIN,
   appUrl: process.env.APP_URL,
 })

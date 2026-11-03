@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio'
 
 export const VOTE_WA_CANDIDATE_URL = 'https://voter.votewa.gov/CandidateList.aspx'
+export const VOTE_WA_GUIDE_API_URL = 'https://voter.votewa.gov/elections'
 
 export const SUPPORTED_CANDIDATE_COUNTIES = [
   { code: '3', externalId: 'wa:county:benton', name: 'Benton County' },
@@ -122,7 +123,176 @@ export async function fetchVoteWaCandidateCsv({ electionId, countyCode, fetchImp
   if (!response.ok || !response.headers.get('content-type')?.includes('text/csv')) {
     throw new Error(`VoteWA candidate export failed with HTTP ${response.status}`)
   }
-  return { csv, url, status: response.status, contentType: response.headers.get('content-type') }
+  return { csv, html, url, status: response.status, contentType: response.headers.get('content-type') }
+}
+
+export function parseVoteWaCandidateGuideLinks(html, { electionId, countyCode }) {
+  const $ = cheerio.load(html)
+  const links = []
+
+  $('a[href*="genericvoterguide.aspx"][href*="#/candidates/"]').each((_index, anchor) => {
+    const href = $(anchor).attr('href') ?? ''
+    const match = href.match(/#\/candidates\/(\d+)\/(\d+)/i)
+    if (!match) return
+
+    const cells = $(anchor).closest('tr').find('td').map((_cellIndex, cell) => normalize($(cell).text())).get()
+    if (cells.length < 6) return
+
+    links.push({
+      districtType: cells[0],
+      district: cells[1],
+      race: cells[2],
+      name: normalize($(anchor).text()),
+      raceId: match[1],
+      ballotId: match[2],
+      countyCode: String(countyCode),
+      voterGuideUrl: new URL(
+        `/genericvoterguide.aspx?e=${encodeURIComponent(electionId)}&c=${encodeURIComponent(countyCode)}#/candidates/${match[1]}/${match[2]}`,
+        VOTE_WA_CANDIDATE_URL,
+      ).toString(),
+    })
+  })
+
+  return links
+}
+
+function profileKey({ district, race, name }) {
+  return [district, race, name].map((value) => normalize(value).toLowerCase()).join('|')
+}
+
+export function attachVoteWaCandidateGuideLinks(candidates, links) {
+  const linksByCandidate = new Map(links.map((link) => [profileKey(link), link]))
+  return candidates.map((candidate) => ({
+    ...candidate,
+    voterGuide: linksByCandidate.get(profileKey(candidate)) ?? null,
+  }))
+}
+
+function htmlToText(html) {
+  if (!normalize(html)) return null
+  const $ = cheerio.load(`<body>${html}</body>`)
+  $('br').replaceWith('\n')
+  $('p, div, li, h1, h2, h3, h4, strong, b').each((_index, element) => {
+    $(element).prepend('\n').append('\n')
+  })
+  const text = $('body').text()
+    .split(/\n+/)
+    .map(normalize)
+    .filter(Boolean)
+    .join('\n')
+  return text || null
+}
+
+const PROFILE_HEADINGS = [
+  ['electedExperience', ['Elected Experience', 'Legal/Judicial Experience']],
+  ['professionalExperience', ['Other Professional Experience', 'Professional/Work Experience']],
+  ['education', ['Education']],
+  ['communityService', ['Community Service']],
+  ['statement', ['Statement']],
+]
+
+export function parseVoteWaStatementSections(statementHtml) {
+  const text = htmlToText(statementHtml)
+  const sections = Object.fromEntries(PROFILE_HEADINGS.map(([key]) => [key, null]))
+  if (!text) return sections
+
+  const aliases = new Map()
+  for (const [key, headings] of PROFILE_HEADINGS) {
+    for (const heading of headings) aliases.set(heading.toLowerCase(), key)
+  }
+
+  let currentKey = null
+  const values = new Map(PROFILE_HEADINGS.map(([key]) => [key, []]))
+  for (const line of text.split('\n')) {
+    const key = aliases.get(line.replace(/:$/, '').toLowerCase())
+    if (key) {
+      currentKey = key
+    } else if (currentKey) {
+      values.get(currentKey).push(line)
+    }
+  }
+
+  for (const [key, lines] of values) sections[key] = normalize(lines.join('\n')) || null
+  if (!Object.values(sections).some(Boolean)) sections.statement = text
+  return sections
+}
+
+function safeWebsite(value) {
+  const website = normalize(value)
+  if (!website) return null
+  try {
+    const url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`)
+    return ['http:', 'https:'].includes(url.protocol) ? url.toString() : null
+  } catch {
+    return null
+  }
+}
+
+function decodePhoto(value) {
+  const encoded = normalize(value).replace(/^data:image\/[a-z0-9.+-]+;base64,/i, '')
+  if (!encoded) return null
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) throw new Error('VoteWA candidate photo is not valid base64.')
+  const photo = Buffer.from(encoded, 'base64')
+  if (photo.length > 5 * 1024 * 1024) throw new Error('VoteWA candidate photo exceeds 5 MB.')
+  if (photo.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) {
+    return { bytes: photo, mimeType: 'image/jpeg' }
+  }
+  if (photo.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return { bytes: photo, mimeType: 'image/png' }
+  }
+  if (photo.subarray(0, 4).toString('ascii') === 'RIFF' && photo.subarray(8, 12).toString('ascii') === 'WEBP') {
+    return { bytes: photo, mimeType: 'image/webp' }
+  }
+  throw new Error('VoteWA candidate photo has an unsupported image format.')
+}
+
+export function parseVoteWaCandidateProfile(payload, voterGuide) {
+  const raw = Array.isArray(payload) ? payload[0]?.statement : payload?.statement ?? payload
+  if (!raw || typeof raw !== 'object') throw new Error('VoteWA candidate profile response is missing statement data.')
+  const sections = parseVoteWaStatementSections(raw.Statement)
+  const photo = decodePhoto(raw.Photo)
+  const federal = ['fed', 'con'].includes(normalize(raw.RaceJurisdictionTypeID).toLowerCase())
+
+  return {
+    ...sections,
+    campaignWebsite: safeWebsite(raw.OrgWebsite),
+    campaignFinanceUrl: federal
+      ? 'https://www.fec.gov/data/'
+      : raw.CandidateCode ? `https://www.pdc.wa.gov/sos/rd.aspx?id=${encodeURIComponent(raw.CandidateCode)}` : null,
+    photo: photo?.bytes ?? null,
+    photoMimeType: photo?.mimeType ?? null,
+    submitted: Boolean(photo || Object.values(sections).some(Boolean)),
+    voterGuideUrl: voterGuide.voterGuideUrl,
+  }
+}
+
+export async function fetchVoteWaCandidateProfile({
+  electionId,
+  voterGuide,
+  fetchImpl = fetch,
+  apiBaseUrl = VOTE_WA_GUIDE_API_URL,
+}) {
+  const url = new URL('candidate.ashx', `${apiBaseUrl.replace(/\/$/, '')}/`)
+  url.search = new URLSearchParams({
+    e: String(electionId),
+    r: voterGuide.raceId,
+    b: voterGuide.ballotId,
+    la: 'en-us',
+    c: voterGuide.countyCode,
+  })
+  const response = await fetchImpl(url, {
+    headers: { accept: 'application/json', 'user-agent': 'PollPal election data collector/0.4' },
+    signal: AbortSignal.timeout(20_000),
+  })
+  const body = await response.text()
+  if (!response.ok) throw new Error(`VoteWA candidate profile returned HTTP ${response.status}`)
+  let payload
+  try {
+    payload = JSON.parse(body)
+  } catch {
+    throw new Error('VoteWA candidate profile did not return JSON.')
+  }
+  return parseVoteWaCandidateProfile(payload, voterGuide)
 }
 
 export function parseVoteWaCandidateCsv(csv, { countyExternalId }) {

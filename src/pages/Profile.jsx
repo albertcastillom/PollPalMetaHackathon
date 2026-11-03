@@ -142,7 +142,7 @@ function ProfileSummary({ profile, onUpdated }) {
 // ---------- Email reminders ----------
 
 function Reminders({ userId, email, initial }) {
-  const [enabled, setEnabled] = useState(Boolean(initial?.email_enabled))
+  const [enabled, setEnabled] = useState(Boolean(initial?.email_subscribed))
   const [address, setAddress] = useState(initial?.address ?? '')
   const [saved, setSaved] = useState(initial)
   const [elections, setElections] = useState(null)
@@ -151,7 +151,7 @@ function Reminders({ userId, email, initial }) {
 
   // Show the upcoming elections for the saved address, so people can see what they'll hear about.
   useEffect(() => {
-    if (!saved?.email_enabled || !saved.address) return undefined
+    if (!saved?.email_subscribed || !saved.address) return undefined
     const controller = new AbortController()
     fetchElectionsByAddress(saved.address, { signal: controller.signal })
       .then((data) => setElections(data.elections ?? []))
@@ -160,7 +160,7 @@ function Reminders({ userId, email, initial }) {
   }, [saved])
 
   const dirty =
-    enabled !== Boolean(saved?.email_enabled) || address.trim() !== (saved?.address ?? '')
+    enabled !== Boolean(saved?.email_subscribed) || address.trim() !== (saved?.address ?? '')
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -251,7 +251,7 @@ function Reminders({ userId, email, initial }) {
             <p className="mt-1 text-xs text-slate-500">
               Only you can see this. We use it to find which elections you can vote in. Currently covers Washington state.
             </p>
-            {saved?.email_enabled && saved.normalized_location && (
+            {saved?.email_subscribed && saved.normalized_location && (
               <p className="mt-2 text-xs text-slate-600">
                 Matched to: <span className="font-medium">{saved.normalized_location}</span>
               </p>
@@ -267,7 +267,7 @@ function Reminders({ userId, email, initial }) {
         <Message message={message} />
       </form>
 
-      {saved?.email_enabled && elections && (
+      {saved?.email_subscribed && elections && (
         <div className="mt-5 border-t border-slate-100 pt-4">
           <h3 className="text-sm font-medium text-slate-800">Upcoming elections we&apos;ll remind you about</h3>
           {elections.length === 0 ? (

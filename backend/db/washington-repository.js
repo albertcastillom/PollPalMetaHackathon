@@ -148,9 +148,25 @@ export function createWashingtonRepository(pool) {
                'ballotOrder', candidate.ballot_order,
                'filingStatus', candidate.filing_status,
                'profileUrl', candidate.profile_url,
+               'profile', case when profile.candidate_id is null then null else jsonb_build_object(
+                 'voterGuideUrl', profile.voter_guide_url,
+                 'electedExperience', profile.elected_experience,
+                 'professionalExperience', profile.professional_experience,
+                 'education', profile.education,
+                 'communityService', profile.community_service,
+                 'statement', profile.statement,
+                 'campaignWebsite', profile.campaign_website,
+                 'campaignFinanceUrl', profile.campaign_finance_url,
+                 'photoUrl', case when profile.photo is null then null else '/api/candidates/' || candidate.id || '/photo' end,
+                 'submitted', profile.submitted,
+                 'attribution', profile.attribution,
+                 'disclaimer', profile.disclaimer,
+                 'verifiedAt', profile.verified_at
+               ) end,
                'verifiedAt', candidate.verified_at
              ) order by candidate.ballot_order nulls last, candidate.name)
              from public.contest_candidates candidate
+             left join public.candidate_profiles profile on profile.candidate_id = candidate.id
              where candidate.contest_id = c.id
                and candidate.filing_status = 'active'
            ), '[]'::jsonb) as candidates
@@ -174,6 +190,62 @@ export function createWashingtonRepository(pool) {
         source: row.source,
         verifiedAt: row.verified_at,
       }))
+    },
+
+    async findCandidateProfile(candidateId) {
+      const { rows } = await pool.query(
+        `select candidate.id, candidate.external_id, candidate.name, candidate.party,
+           candidate.ballot_order, candidate.filing_status, candidate.verified_at,
+           contest.id as contest_id, contest.title as contest_title,
+           profile.voter_guide_url, profile.elected_experience,
+           profile.professional_experience, profile.education, profile.community_service,
+           profile.statement, profile.campaign_website, profile.campaign_finance_url,
+           profile.photo is not null as has_photo, profile.submitted, profile.attribution,
+           profile.disclaimer, profile.verified_at as profile_verified_at
+         from public.contest_candidates candidate
+         join public.contests contest on contest.id = candidate.contest_id
+         left join public.candidate_profiles profile on profile.candidate_id = candidate.id
+         where candidate.id = $1 and candidate.filing_status = 'active'`,
+        [candidateId],
+      )
+      const row = rows[0]
+      if (!row) return null
+      return {
+        id: row.id,
+        externalId: row.external_id,
+        name: row.name,
+        party: row.party,
+        ballotOrder: row.ballot_order,
+        filingStatus: row.filing_status,
+        contest: { id: row.contest_id, title: row.contest_title },
+        profile: row.voter_guide_url ? {
+          voterGuideUrl: row.voter_guide_url,
+          electedExperience: row.elected_experience,
+          professionalExperience: row.professional_experience,
+          education: row.education,
+          communityService: row.community_service,
+          statement: row.statement,
+          campaignWebsite: row.campaign_website,
+          campaignFinanceUrl: row.campaign_finance_url,
+          photoUrl: row.has_photo ? `/api/candidates/${row.id}/photo` : null,
+          submitted: row.submitted,
+          attribution: row.attribution,
+          disclaimer: row.disclaimer,
+          verifiedAt: row.profile_verified_at,
+        } : null,
+        verifiedAt: row.verified_at,
+      }
+    },
+
+    async findCandidatePhoto(candidateId) {
+      const { rows } = await pool.query(
+        `select profile.photo, profile.photo_mime_type
+         from public.candidate_profiles profile
+         join public.contest_candidates candidate on candidate.id = profile.candidate_id
+         where profile.candidate_id = $1 and candidate.filing_status = 'active'`,
+        [candidateId],
+      )
+      return rows[0] ?? null
     },
 
     async getCoverage(jurisdictionIds) {

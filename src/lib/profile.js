@@ -33,8 +33,8 @@ export async function updateDisplayName(userId, displayName) {
 export async function getReminderPreferences(userId) {
   return check(
     await client()
-      .from('reminder_preferences')
-      .select('email_enabled, address, normalized_location, updated_at')
+      .from('account_preferences')
+      .select('email_subscribed, address, normalized_location, updated_at')
       .eq('user_id', userId)
       .maybeSingle(),
   )
@@ -43,15 +43,15 @@ export async function getReminderPreferences(userId) {
 export async function saveReminderPreferences(userId, { emailEnabled, address, normalizedLocation }) {
   return check(
     await client()
-      .from('reminder_preferences')
+      .from('account_preferences')
       .upsert({
         user_id: userId,
-        email_enabled: emailEnabled,
+        email_subscribed: emailEnabled,
         address: address || null,
         normalized_location: normalizedLocation || null,
         updated_at: new Date().toISOString(),
       })
-      .select('email_enabled, address, normalized_location, updated_at')
+      .select('email_subscribed, address, normalized_location, updated_at')
       .single(),
   )
 }
@@ -66,12 +66,7 @@ export async function sendFriendRequest(email) {
 }
 
 export async function acceptFriendRequest(friendshipId) {
-  check(
-    await client()
-      .from('friendships')
-      .update({ status: 'accepted', accepted_at: new Date().toISOString() })
-      .eq('id', friendshipId),
-  )
+  check(await client().rpc('accept_friend_request', { friendship_id: friendshipId }))
 }
 
 // Removes a friend, declines an incoming request, or cancels an outgoing one.

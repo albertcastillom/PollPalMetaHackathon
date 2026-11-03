@@ -158,8 +158,10 @@ Do not store raw street addresses. Store raw questions only with explicit produc
 Enable RLS on every table in an exposed schema. New Supabase projects do not automatically expose new tables to the Data API, so migrations must include deliberate `GRANT` statements in addition to RLS policies.
 
 - Public reference tables: explicit read grants to the required roles and no client write grants.
-- Profiles: a user can select/update only `user_id = auth.uid()`.
-- Subscriptions and preferences: a user can access only their own rows.
+- Profiles: a user can select/update only `profiles.id = auth.uid()`; Auth owns the login email.
+- Account preferences: a user can access only `user_id = auth.uid()`; `email_subscribed` is opt-in and defaults to false.
+- Friendships: only the requester and addressee can read or delete the relationship. Email lookup and acceptance use authenticated RPCs whose privileged implementations live in the private schema.
+- Reminder subscriptions and delivery preferences: a user can access only their own rows.
 - Scheduled reminders and deliveries: no direct browser writes; expose a safe user-scoped read view only if needed.
 - Plans and steps: ownership policies through the parent plan.
 - AI audit internals: private schema; expose only the safe explanation receipt.

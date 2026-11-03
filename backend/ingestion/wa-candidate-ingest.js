@@ -1,7 +1,10 @@
 import { createHash } from 'node:crypto'
 
 import {
+  attachVoteWaCandidateGuideLinks,
+  fetchVoteWaCandidateProfile,
   fetchVoteWaCandidateCsv,
+  parseVoteWaCandidateGuideLinks,
   parseVoteWaCandidateCsv,
   SUPPORTED_CANDIDATE_COUNTIES,
   VOTE_WA_CANDIDATE_URL,
@@ -13,6 +16,14 @@ function slug(value) {
 
 function stableId(...values) {
   return createHash('sha256').update(values.join('|')).digest('hex').slice(0, 24)
+}
+
+async function mapWithConcurrency(values, limit, worker) {
+  const queue = [...values]
+  const runners = Array.from({ length: Math.min(limit, queue.length) }, async () => {
+    while (queue.length > 0) await worker(queue.shift())
+  })
+  await Promise.all(runners)
 }
 
 function groupCandidates(records) {
@@ -55,7 +66,14 @@ export async function ingestWashingtonCandidates({
       countyCode: county.code,
       fetchImpl,
     })
-    const candidates = parseVoteWaCandidateCsv(payload.csv, { countyExternalId: county.externalId })
+    const links = parseVoteWaCandidateGuideLinks(payload.html, {
+      electionId: voteWaElectionId,
+      countyCode: county.code,
+    })
+    const candidates = attachVoteWaCandidateGuideLinks(
+      parseVoteWaCandidateCsv(payload.csv, { countyExternalId: county.externalId }),
+      links,
+    )
     payloads.push({ county, payload, candidates })
   }
 
@@ -64,6 +82,24 @@ export async function ingestWashingtonCandidates({
   if (records.length < 50 || contests.length < 20) {
     throw new Error(`VoteWA candidate safety check failed: found ${records.length} candidates in ${contests.length} contests.`)
   }
+
+  const profiles = new Map()
+  const profileErrors = []
+  const profileTargets = new Map()
+  for (const record of records) {
+    if (record.voterGuide) profileTargets.set(record.voterGuide.ballotId, record.voterGuide)
+  }
+  await mapWithConcurrency(profileTargets.values(), 5, async (voterGuide) => {
+    try {
+      profiles.set(voterGuide.ballotId, await fetchVoteWaCandidateProfile({
+        electionId: voteWaElectionId,
+        voterGuide,
+        fetchImpl,
+      }))
+    } catch (error) {
+      profileErrors.push({ ballotId: voterGuide.ballotId, message: error.message })
+    }
+  })
 
   const client = await pool.connect()
   const verifiedAt = new Date().toISOString()
@@ -158,25 +194,60 @@ export async function ingestWashingtonCandidates({
           candidate.name.toLowerCase(),
         )}`
         candidateExternalIds.push(externalId)
-        await client.query(
+        const candidateResult = await client.query(
           `insert into public.contest_candidates
              (external_id, contest_id, name, party, ballot_order, filing_status,
-              source_id, verified_at)
-           values ($1, $2, $3, $4, $5, $6, $7, $8)
+              profile_url, source_id, verified_at)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
            on conflict (contest_id, name) do update set
              external_id = excluded.external_id,
              name = excluded.name,
              party = excluded.party,
              ballot_order = excluded.ballot_order,
              filing_status = excluded.filing_status,
+             profile_url = excluded.profile_url,
              source_id = excluded.source_id,
              verified_at = excluded.verified_at,
-             updated_at = now()`,
+             updated_at = now()
+           returning id`,
           [
             externalId, contestId, candidate.name, candidate.party, candidate.ballotOrder,
-            candidate.filingStatus, sourceId, verifiedAt,
+            candidate.filingStatus, candidate.voterGuide?.voterGuideUrl ?? null, sourceId, verifiedAt,
           ],
         )
+        const profile = candidate.voterGuide ? profiles.get(candidate.voterGuide.ballotId) : null
+        if (profile) {
+          await client.query(
+            `insert into public.candidate_profiles
+               (candidate_id, source_id, voter_guide_url, elected_experience,
+                professional_experience, education, community_service, statement,
+                campaign_website, campaign_finance_url, photo, photo_mime_type,
+                submitted, verified_at)
+             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+             on conflict (candidate_id) do update set
+               source_id = excluded.source_id,
+               voter_guide_url = excluded.voter_guide_url,
+               elected_experience = excluded.elected_experience,
+               professional_experience = excluded.professional_experience,
+               education = excluded.education,
+               community_service = excluded.community_service,
+               statement = excluded.statement,
+               campaign_website = excluded.campaign_website,
+               campaign_finance_url = excluded.campaign_finance_url,
+               photo = excluded.photo,
+               photo_mime_type = excluded.photo_mime_type,
+               submitted = excluded.submitted,
+               verified_at = excluded.verified_at,
+               updated_at = now()`,
+            [
+              candidateResult.rows[0].id, sourceId, profile.voterGuideUrl,
+              profile.electedExperience, profile.professionalExperience, profile.education,
+              profile.communityService, profile.statement, profile.campaignWebsite,
+              profile.campaignFinanceUrl, profile.photo, profile.photoMimeType,
+              profile.submitted, verifiedAt,
+            ],
+          )
+        }
         candidateCount += 1
       }
 
@@ -222,6 +293,8 @@ export async function ingestWashingtonCandidates({
       candidatesSeen: records.length,
       candidatesWritten: candidateCount,
       contestsWritten: contestExternalIds.length,
+      profilesWritten: profiles.size,
+      profileErrors,
       jurisdictionsMatched: jurisdictionIds.size,
       verifiedAt,
     }

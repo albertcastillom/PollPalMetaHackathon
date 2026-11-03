@@ -141,10 +141,21 @@ the script (`899` general and `898` primary), so it can be omitted for those
 elections. Run the SOS calendar ingestion first so the matching election exists.
 
 The importer persists names, party preferences, filing status, optional ballot
-order, source, and verification time. It deliberately discards mailing
-addresses, phone numbers, and email addresses from the source export. Only
+order, source, verification time, and official voters' guide profiles when
+submitted. Profiles include the official photo, candidate statement, elected
+experience, professional experience, education, community service, campaign
+website, and campaign-finance link. Candidate-submitted fields retain the
+official disclaimer that the Secretary of State does not verify them for truth
+or fact. The importer deliberately discards mailing addresses, phone numbers,
+and email addresses from both sources. Only
 active candidates are exposed by `POST /api/elections` under each
 `candidate_race` record's `candidates` array.
+
+Candidate cards can use the nested `profile` object returned with contest
+candidates. A full profile is also available from `GET /api/candidates/:id`,
+and its `photoUrl` points to `GET /api/candidates/:id/photo`. The photo endpoint
+serves the official image with a fixed image content type; clients do not need
+direct database or storage credentials.
 
 Coverage remains partial. PollPal currently matches only jurisdiction types for
 which it has safe address-resolution boundaries: state Supreme Court,

@@ -15,17 +15,24 @@ function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!supabase) return undefined
+    let active = true
 
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!active) return
+      setSession(error ? null : data.session)
       setLoading(false)
     })
 
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!active) return
       setSession(nextSession)
+      setLoading(false)
     })
 
-    return () => data.subscription.unsubscribe()
+    return () => {
+      active = false
+      data.subscription.unsubscribe()
+    }
   }, [])
 
   const value = useMemo(
