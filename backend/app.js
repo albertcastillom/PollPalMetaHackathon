@@ -5,12 +5,14 @@ import helmet from 'helmet'
 import { createElectionRouter } from './routes/elections.js'
 import { createCandidateRouter } from './routes/candidates.js'
 import { createReminderRouter } from './routes/reminders.js'
+import { createTranslationRouter } from './routes/translations.js'
 
 export function createApp({
   electionService,
   authVerifier,
   reminderRepository,
   candidateRepository,
+  translationService,
   clientOrigin = 'http://localhost:5173',
   appUrl = 'http://localhost:5173',
 }) {
@@ -28,6 +30,7 @@ export function createApp({
   app.use('/api/elections', createElectionRouter({ electionService }))
   app.use('/api/candidates', createCandidateRouter({ candidateRepository }))
   app.use('/api/reminders', createReminderRouter({ authVerifier, reminderRepository, appUrl }))
+  if (translationService) app.use('/api/translations', createTranslationRouter({ translationService }))
 
   app.use((error, _request, response, _next) => {
     void _next

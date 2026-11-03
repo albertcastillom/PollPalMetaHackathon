@@ -2,17 +2,23 @@ import { Link } from 'react-router-dom'
 import AddressForm from '../components/AddressForm'
 import { useElections } from '../lib/useElections'
 import { formatDate, todayString } from '../lib/format'
+import T from '../context/T'
+import { useTranslation } from '../context/useTranslation'
 
 function ElectionCard({ election }) {
   const today = todayString()
   const upcomingDates = (election.milestones ?? []).filter((milestone) => milestone.occursOn >= today)
+  const { translate } = useTranslation([
+    election.name,
+    ...upcomingDates.map((milestone) => milestone.label ?? String(milestone.kind).replace(/_/g, ' ')),
+  ])
 
   return (
     <li className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold text-slate-900">{election.name}</h3>
+            <h3 className="font-semibold text-slate-900">{translate(election.name)}</h3>
             {election.type && (
               <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium capitalize text-blue-700">
                 {String(election.type).replace(/_/g, ' ')}
@@ -20,13 +26,13 @@ function ElectionCard({ election }) {
             )}
           </div>
           <p className="mt-1 text-sm text-slate-600">
-            Election Day: {formatDate(election.electionDay)}
+            <T>Election Day</T>: {formatDate(election.electionDay)}
             <span className="text-slate-400"> · </span>
-            {election.status === 'confirmed' ? 'Date confirmed' : 'Date expected'}
+            {election.status === 'confirmed' ? <T>Date confirmed</T> : <T>Date expected</T>}
           </p>
           {election.source?.url && (
             <p className="mt-1 text-xs text-slate-500">
-              Source:{' '}
+              <T>Source</T>:{' '}
               <a
                 href={election.source.url}
                 target="_blank"
@@ -44,13 +50,13 @@ function ElectionCard({ election }) {
             to={`/candidates?election=${encodeURIComponent(election.id)}`}
             className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
           >
-            See candidates
+              <T>See candidates</T>
           </Link>
           <Link
             to="/map"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            Drop-off sites
+              <T>Drop-off sites</T>
           </Link>
         </div>
       </div>
@@ -58,12 +64,12 @@ function ElectionCard({ election }) {
       {upcomingDates.length > 0 && (
         <details className="mt-3 border-t border-slate-100 pt-3">
           <summary className="cursor-pointer text-sm font-medium text-slate-700">
-            Key dates ({upcomingDates.length})
+            <T>Key dates</T> ({upcomingDates.length})
           </summary>
           <ul className="mt-2 space-y-1 text-sm text-slate-600">
             {upcomingDates.map((milestone) => (
               <li key={milestone.id} className="flex justify-between gap-4">
-                <span>{milestone.label ?? milestone.kind}</span>
+                <span>{translate(milestone.label ?? String(milestone.kind).replace(/_/g, ' '))}</span>
                 <span className="shrink-0 text-slate-500">{formatDate(milestone.occursOn)}</span>
               </li>
             ))}
@@ -76,17 +82,17 @@ function ElectionCard({ election }) {
 
 function Results({ data, address }) {
   const elections = data.elections ?? []
+  const { translate } = useTranslation(['Elections for'])
 
   return (
     <div>
       <h2 className="text-lg font-semibold text-slate-900">
-        Elections for {data.normalizedLocation ?? address}
+        {translate('Elections for')} {data.normalizedLocation ?? address}
       </h2>
 
       {elections.length === 0 ? (
         <p className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-          We didn&apos;t find upcoming elections for this address in our data. That doesn&apos;t
-          mean none are scheduled. Check with your county elections office.
+          <T>We didn't find upcoming elections for this address in our data. That doesn't mean none are scheduled. Check with your county elections office.</T>
         </p>
       ) : (
         <ul className="mt-4 space-y-3">
@@ -98,7 +104,7 @@ function Results({ data, address }) {
 
       {(data.coverage ?? []).length > 0 && (
         <details className="mt-4 text-sm text-slate-600">
-          <summary className="cursor-pointer font-medium text-slate-700">What data do we have for this area?</summary>
+          <summary className="cursor-pointer font-medium text-slate-700"><T>What data do we have for this area?</T></summary>
           <ul className="mt-2 space-y-1">
             {data.coverage.map((item) => (
               <li key={`${item.jurisdictionId}-${item.component}`}>
@@ -124,10 +130,10 @@ function Home({ search, onSearch }) {
         {/* Election finder */}
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-            Find elections in your area
+            <T>Find elections in your area</T>
           </h1>
           <p className="mt-4 text-lg text-slate-600">
-            Enter your address to see the elections you can vote in.
+            <T>Enter your address to see the elections you can vote in.</T>
           </p>
         </div>
 
@@ -145,7 +151,7 @@ function Home({ search, onSearch }) {
         <div className="mx-auto mt-10 max-w-3xl" aria-live="polite">
           {loading && (
             <p role="status" className="text-sm text-slate-600">
-              Looking up elections for your address…
+              <T>Looking up elections for your address…</T>
             </p>
           )}
           {error && (
@@ -158,27 +164,27 @@ function Home({ search, onSearch }) {
 
         {/* Other features */}
         <div className="mx-auto mt-16 max-w-3xl">
-          <h2 className="mb-3 text-sm font-medium text-slate-500">More tools</h2>
+          <h2 className="mb-3 text-sm font-medium text-slate-500"><T>More tools</T></h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <Link
               to="/map"
               className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-300"
             >
-              <p className="font-semibold text-slate-900">Ballot drop-off map</p>
+              <p className="font-semibold text-slate-900"><T>Ballot drop-off map</T></p>
               <p className="mt-1 text-sm text-slate-600">
-                See where you can drop off your ballot near you.
+                <T>See where you can drop off your ballot near you.</T>
               </p>
-              <span className="mt-3 inline-block text-sm font-medium text-blue-700">Open the map</span>
+              <span className="mt-3 inline-block text-sm font-medium text-blue-700"><T>Open the map</T></span>
             </Link>
             <Link
               to="/candidates"
               className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-300"
             >
-              <p className="font-semibold text-slate-900">Candidate information</p>
+              <p className="font-semibold text-slate-900"><T>Candidate information</T></p>
               <p className="mt-1 text-sm text-slate-600">
-                Read about candidates using government and official sources.
+                <T>Read about candidates using government and official sources.</T>
               </p>
-              <span className="mt-3 inline-block text-sm font-medium text-blue-700">Browse candidates</span>
+              <span className="mt-3 inline-block text-sm font-medium text-blue-700"><T>Browse candidates</T></span>
             </Link>
           </div>
         </div>

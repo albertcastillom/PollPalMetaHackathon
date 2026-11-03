@@ -27,3 +27,28 @@ export async function fetchElectionsByAddress(address, { signal } = {}) {
 
   return body
 }
+
+export async function fetchTranslations(texts, targetLanguage, { signal } = {}) {
+  let response
+
+  try {
+    response = await fetch(`${API_URL}/api/translations`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ texts, targetLanguage }),
+      signal,
+    })
+  } catch (error) {
+    if (error.name === 'AbortError') throw error
+    throw new Error('AI translation is temporarily unavailable.', { cause: error })
+  }
+
+  const body = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw Object.assign(
+      new Error(body?.error?.message ?? 'AI translation is temporarily unavailable.'),
+      { code: body?.error?.code },
+    )
+  }
+  return body.translations
+}

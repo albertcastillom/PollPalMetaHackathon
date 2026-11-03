@@ -2,6 +2,8 @@ import { lazy, Suspense, useMemo, useState } from 'react'
 import AddressForm from '../components/AddressForm'
 import { useElections } from '../lib/useElections'
 import { distanceMiles, formatDate, formatTime, todayString } from '../lib/format'
+import T from '../context/T'
+import { useTranslation } from '../context/useTranslation'
 
 // The map library is large, so it only loads when this page is opened.
 const LocationMap = lazy(() => import('../components/LocationMap'))
@@ -60,14 +62,22 @@ function BallotMap({ search, onSearch }) {
 
     return result.sort(byDistance)
   }, [data, showAllTypes])
+  const { translate } = useTranslation([
+    ...Object.values(TYPE_LABELS),
+    ...locations.map(availability),
+    'Loading map…',
+    'Looking up locations near your address…',
+    'Enter your address to see drop-off locations on the map.',
+    'Distance unknown',
+  ])
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       <div className="max-w-2xl">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          Ballot drop-off locations
+          <T>Ballot drop-off locations</T>
         </h1>
-        <p className="mt-2 text-slate-600">See where you can drop off your ballot near you.</p>
+        <p className="mt-2 text-slate-600"><T>See where you can drop off your ballot near you.</T></p>
       </div>
 
       <div className="mt-6 max-w-xl">
@@ -85,7 +95,7 @@ function BallotMap({ search, onSearch }) {
         {/* Map */}
         <div className="relative min-h-[320px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm lg:col-span-2 lg:min-h-[520px]">
           {data ? (
-            <Suspense fallback={<p className="p-6 text-sm text-slate-500">Loading map…</p>}>
+            <Suspense fallback={<p className="p-6 text-sm text-slate-500">{translate('Loading map…')}</p>}>
               <LocationMap
                 center={data.coordinates}
                 locations={locations}
@@ -96,8 +106,8 @@ function BallotMap({ search, onSearch }) {
           ) : (
             <div className="flex h-full min-h-[320px] items-center justify-center p-6 text-center text-sm text-slate-500">
               {loading
-                ? 'Looking up locations near your address…'
-                : 'Enter your address to see drop-off locations on the map.'}
+                ? translate('Looking up locations near your address…')
+                : translate('Enter your address to see drop-off locations on the map.')}
             </div>
           )}
         </div>
@@ -119,13 +129,13 @@ function BallotMap({ search, onSearch }) {
                   onChange={(event) => setShowAllTypes(event.target.checked)}
                   className="h-4 w-4 rounded border-slate-300"
                 />
-                Also show voting centers and election offices
+                <T>Also show voting centers and election offices</T>
               </label>
 
               {locations[0]?.distance != null && (
                 <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                    Closest to your address · {locations[0].distance.toFixed(1)} mi
+                    <T>Closest to your address</T> · {locations[0].distance.toFixed(1)} mi
                   </p>
                   <p className="mt-1 font-semibold text-slate-900">{locations[0].name}</p>
                   <p className="text-sm text-slate-600">
@@ -137,7 +147,7 @@ function BallotMap({ search, onSearch }) {
                       onClick={() => setSelectedId(locations[0].id)}
                       className="text-blue-700 hover:underline"
                     >
-                      Show on map
+                      <T>Show on map</T>
                     </button>
                     <a
                       href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
@@ -147,21 +157,19 @@ function BallotMap({ search, onSearch }) {
                       rel="noreferrer"
                       className="text-blue-700 hover:underline"
                     >
-                      Get directions
+                      <T>Get directions</T>
                     </a>
                   </div>
                 </div>
               )}
 
               <p className="mt-3 text-xs text-slate-500">
-                Sorted by straight-line distance from your address. Check with your county which locations you can
-                use.
+                <T>Sorted by straight-line distance from your address. Check with your county which locations you can use.</T>
               </p>
 
               {locations.length === 0 ? (
                 <p className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-                  No drop-off locations are listed for this address yet. Location data currently covers
-                  King, Snohomish, Benton and Franklin counties.
+                  <T>No drop-off locations are listed for this address yet. Location data currently covers King, Snohomish, Benton and Franklin counties.</T>
                 </p>
               ) : (
                 <ul className="mt-4 space-y-3 lg:max-h-[460px] lg:overflow-y-auto lg:pr-1">
@@ -178,19 +186,19 @@ function BallotMap({ search, onSearch }) {
                         <span className="flex items-start justify-between gap-2">
                           <span className="font-semibold text-slate-900">{location.name}</span>
                           <span className="shrink-0 text-xs font-medium text-slate-500">
-                            {location.distance != null ? `${location.distance.toFixed(1)} mi` : 'Distance unknown'}
+                            {location.distance != null ? `${location.distance.toFixed(1)} mi` : translate('Distance unknown')}
                           </span>
                         </span>
                         <span className="mt-1 block text-sm text-slate-600">
                           {[location.address, location.city, location.postalCode].filter(Boolean).join(', ')}
                         </span>
-                        <span className="mt-1 block text-xs font-medium text-blue-700">{availability(location)}</span>
+                        <span className="mt-1 block text-xs font-medium text-blue-700">{translate(availability(location))}</span>
                         <span className="mt-2 flex flex-wrap gap-2 text-xs">
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">
-                            {TYPE_LABELS[location.type] ?? location.type}
+                            {translate(TYPE_LABELS[location.type] ?? location.type)}
                           </span>
                           {location.driveUp && (
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">Drive-up</span>
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-700"><T>Drive-up</T></span>
                           )}
                         </span>
                       </button>
@@ -201,7 +209,7 @@ function BallotMap({ search, onSearch }) {
                           rel="noreferrer"
                           className="mt-1 inline-block px-1 text-xs text-blue-700 hover:underline"
                         >
-                          Source: {location.source.publisher ?? 'official source'}
+                          <T>Source</T>: {location.source.publisher ?? 'official source'}
                         </a>
                       )}
                     </li>

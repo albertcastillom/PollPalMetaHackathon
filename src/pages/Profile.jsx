@@ -13,6 +13,8 @@ import {
   sendFriendRequest,
   updateDisplayName,
 } from '../lib/profile'
+import T from '../context/T'
+import { useTranslation } from '../context/useTranslation'
 
 const inputClass =
   'w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20'
@@ -22,10 +24,11 @@ const secondaryButton =
   'rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60'
 
 function Card({ title, description, children }) {
+  const { translate } = useTranslation([title, description].filter(Boolean))
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-      <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-      {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+      <h2 className="text-lg font-semibold text-slate-900">{translate(title)}</h2>
+      {description && <p className="mt-1 text-sm text-slate-500">{translate(description)}</p>}
       <div className="mt-5">{children}</div>
     </section>
   )
@@ -64,6 +67,7 @@ function ProfileSummary({ profile, onUpdated }) {
   const [name, setName] = useState(profile.display_name ?? '')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
+  const { translate } = useTranslation(['Display name', 'Your name', 'Saving…', 'Save', 'Cancel', 'Your profile', 'Edit name', 'Add your name'])
 
   async function handleSave(event) {
     event.preventDefault()
@@ -87,7 +91,7 @@ function ProfileSummary({ profile, onUpdated }) {
           {editing ? (
             <form onSubmit={handleSave} className="flex flex-col gap-2 sm:flex-row">
               <label htmlFor="display-name" className="sr-only">
-                Display name
+                {translate('Display name')}
               </label>
               <input
                 id="display-name"
@@ -95,12 +99,12 @@ function ProfileSummary({ profile, onUpdated }) {
                 maxLength={60}
                 autoFocus
                 onChange={(event) => setName(event.target.value)}
-                placeholder="Your name"
+                placeholder={translate('Your name')}
                 className={inputClass}
               />
               <div className="flex gap-2">
                 <button type="submit" disabled={saving} className={primaryButton}>
-                  {saving ? 'Saving…' : 'Save'}
+                  {translate(saving ? 'Saving…' : 'Save')}
                 </button>
                 <button
                   type="button"
@@ -110,19 +114,19 @@ function ProfileSummary({ profile, onUpdated }) {
                   }}
                   className={secondaryButton}
                 >
-                  Cancel
+                  {translate('Cancel')}
                 </button>
               </div>
             </form>
           ) : (
             <>
               <h1 className="truncate text-2xl font-bold text-slate-900">
-                {profile.display_name || 'Your profile'}
+                {profile.display_name || translate('Your profile')}
               </h1>
               <p className="truncate text-sm text-slate-600">{profile.email}</p>
               {profile.created_at && (
                 <p className="mt-1 text-xs text-slate-500">
-                  Member since {formatDate(profile.created_at, { month: 'long', year: 'numeric' })}
+                  <T>Member since</T> {formatDate(profile.created_at, { month: 'long', year: 'numeric' })}
                 </p>
               )}
             </>
@@ -130,7 +134,7 @@ function ProfileSummary({ profile, onUpdated }) {
         </div>
         {!editing && (
           <button type="button" onClick={() => setEditing(true)} className={`${secondaryButton} self-start sm:self-center`}>
-            {profile.display_name ? 'Edit name' : 'Add your name'}
+            {translate(profile.display_name ? 'Edit name' : 'Add your name')}
           </button>
         )}
       </div>
@@ -148,6 +152,10 @@ function Reminders({ userId, email, initial }) {
   const [elections, setElections] = useState(null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
+  const { translate } = useTranslation([
+    'Email me about elections in my area', 'Sent to', 'Home address',
+    'e.g. 123 Main St, Auburn, WA 98001', 'Saving…', 'Save reminder settings',
+  ])
 
   // Show the upcoming elections for the saved address, so people can see what they'll hear about.
   useEffect(() => {
@@ -211,9 +219,9 @@ function Reminders({ userId, email, initial }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p id="reminders-label" className="text-sm font-medium text-slate-800">
-              Email me about elections in my area
+              {translate('Email me about elections in my area')}
             </p>
-            <p className="text-xs text-slate-500">Sent to {email}</p>
+            <p className="text-xs text-slate-500">{translate('Sent to')} {email}</p>
           </div>
           <button
             type="button"
@@ -236,7 +244,7 @@ function Reminders({ userId, email, initial }) {
         {enabled && (
           <div className="mt-4">
             <label htmlFor="reminder-address" className="block text-sm font-medium text-slate-700">
-              Home address
+              {translate('Home address')}
             </label>
             <input
               id="reminder-address"
@@ -245,15 +253,15 @@ function Reminders({ userId, email, initial }) {
               maxLength={300}
               value={address}
               onChange={(event) => setAddress(event.target.value)}
-              placeholder="e.g. 123 Main St, Auburn, WA 98001"
+              placeholder={translate('e.g. 123 Main St, Auburn, WA 98001')}
               className={`mt-1 ${inputClass}`}
             />
             <p className="mt-1 text-xs text-slate-500">
-              Only you can see this. We use it to find which elections you can vote in. Currently covers Washington state.
+              <T>Only you can see this. We use it to find which elections you can vote in. Currently covers Washington state.</T>
             </p>
             {saved?.email_subscribed && saved.normalized_location && (
               <p className="mt-2 text-xs text-slate-600">
-                Matched to: <span className="font-medium">{saved.normalized_location}</span>
+                <T>Matched to</T>: <span className="font-medium">{saved.normalized_location}</span>
               </p>
             )}
           </div>
@@ -261,7 +269,7 @@ function Reminders({ userId, email, initial }) {
 
         <div className="mt-4 flex items-center gap-3">
           <button type="submit" disabled={saving || !dirty} className={primaryButton}>
-            {saving ? 'Saving…' : 'Save reminder settings'}
+            {translate(saving ? 'Saving…' : 'Save reminder settings')}
           </button>
         </div>
         <Message message={message} />
@@ -269,10 +277,10 @@ function Reminders({ userId, email, initial }) {
 
       {saved?.email_subscribed && elections && (
         <div className="mt-5 border-t border-slate-100 pt-4">
-          <h3 className="text-sm font-medium text-slate-800">Upcoming elections we&apos;ll remind you about</h3>
+          <h3 className="text-sm font-medium text-slate-800"><T>Upcoming elections we'll remind you about</T></h3>
           {elections.length === 0 ? (
             <p className="mt-2 text-sm text-slate-500">
-              None scheduled in our data yet. We&apos;ll email you when one is added.
+              <T>None scheduled in our data yet. We'll email you when one is added.</T>
             </p>
           ) : (
             <ul className="mt-2 space-y-1.5 text-sm">
@@ -311,6 +319,7 @@ function Friends({ initial }) {
   const [sending, setSending] = useState(false)
   const [busyId, setBusyId] = useState(null)
   const [message, setMessage] = useState(null)
+  const { translate } = useTranslation(['Friend\'s email', 'Sending…', 'Add friend', 'Accept', 'Decline', 'Remove', 'Cancel'])
 
   const incoming = friends.filter((f) => f.status === 'pending' && f.direction === 'incoming')
   const outgoing = friends.filter((f) => f.status === 'pending' && f.direction === 'outgoing')
@@ -367,7 +376,7 @@ function Friends({ initial }) {
     <Card title="Friends" description="Add friends to remind each other to vote.">
       <form onSubmit={handleAdd} noValidate className="flex flex-col gap-2 sm:flex-row">
         <label htmlFor="friend-email" className="sr-only">
-          Friend&apos;s email
+          {translate("Friend's email")}
         </label>
         <input
           id="friend-email"
@@ -379,10 +388,10 @@ function Friends({ initial }) {
           className={inputClass}
         />
         <button type="submit" disabled={sending} className={`${primaryButton} shrink-0`}>
-          {sending ? 'Sending…' : 'Add friend'}
+          {translate(sending ? 'Sending…' : 'Add friend')}
         </button>
       </form>
-      <p className="mt-2 text-xs text-slate-500">Your friend needs a PollPal account with this email.</p>
+      <p className="mt-2 text-xs text-slate-500"><T>Your friend needs a PollPal account with this email.</T></p>
       <Message message={message} />
 
       {incoming.length > 0 && (
@@ -396,10 +405,10 @@ function Friends({ initial }) {
                   onClick={() => act(friend.friendship_id, acceptFriendRequest, `You and ${nameOf(friend)} are now friends.`)}
                   className="rounded-lg bg-blue-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-800"
                 >
-                  Accept
+                  {translate('Accept')}
                 </button>
                 <button type="button" onClick={() => act(friend.friendship_id, removeFriendship)} className={secondaryButton}>
-                  Decline
+                  {translate('Decline')}
                 </button>
               </FriendRow>
             ))}
@@ -408,9 +417,9 @@ function Friends({ initial }) {
       )}
 
       <div className="mt-6">
-        <h3 className="text-sm font-medium text-slate-800">Your friends ({accepted.length})</h3>
+        <h3 className="text-sm font-medium text-slate-800"><T>Your friends</T> ({accepted.length})</h3>
         {accepted.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-500">No friends yet. Add someone by email above.</p>
+          <p className="mt-2 text-sm text-slate-500"><T>No friends yet. Add someone by email above.</T></p>
         ) : (
           <ul className="divide-y divide-slate-100">
             {accepted.map((friend) => (
@@ -424,7 +433,7 @@ function Friends({ initial }) {
                   }}
                   className={secondaryButton}
                 >
-                  Remove
+                  {translate('Remove')}
                 </button>
               </FriendRow>
             ))}
@@ -439,7 +448,7 @@ function Friends({ initial }) {
             {outgoing.map((friend) => (
               <FriendRow key={friend.friendship_id} friend={friend} busy={busyId === friend.friendship_id}>
                 <button type="button" onClick={() => act(friend.friendship_id, removeFriendship)} className={secondaryButton}>
-                  Cancel
+                  {translate('Cancel')}
                 </button>
               </FriendRow>
             ))}
@@ -456,6 +465,7 @@ function Profile() {
   const { user, loading: authLoading } = useAuth()
   const userId = user?.id
   const [state, setState] = useState({ userId: null, data: null, error: null })
+  const { translate } = useTranslation(['Loading…', 'Your profile', 'Log in or create an account', 'Loading your profile…'])
 
   useEffect(() => {
     if (!userId) return undefined
@@ -475,19 +485,19 @@ function Profile() {
   }, [userId])
 
   if (authLoading) {
-    return <p className="px-4 py-16 text-center text-sm text-slate-500">Loading…</p>
+    return <p className="px-4 py-16 text-center text-sm text-slate-500">{translate('Loading…')}</p>
   }
 
   if (!user) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 sm:px-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm sm:p-8">
-          <h1 className="text-2xl font-bold text-slate-900">Your profile</h1>
+          <h1 className="text-2xl font-bold text-slate-900">{translate('Your profile')}</h1>
           <p className="mt-2 text-sm text-slate-600">
-            Log in to add friends and get email reminders about elections where you live.
+            <T>Log in to add friends and get email reminders about elections where you live.</T>
           </p>
           <Link to="/login" className={`mt-6 inline-block ${primaryButton}`}>
-            Log in or create an account
+            {translate('Log in or create an account')}
           </Link>
         </div>
       </div>
@@ -504,7 +514,7 @@ function Profile() {
       <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6 sm:py-16">
         {!isCurrent && (
           <p role="status" className="text-center text-sm text-slate-500">
-            Loading your profile…
+            {translate('Loading your profile…')}
           </p>
         )}
         {error && (

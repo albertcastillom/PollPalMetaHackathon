@@ -5,16 +5,20 @@ function parseDate(value) {
   return new Date(year, month - 1, day)
 }
 
+function viewerLocale() {
+  return typeof document === 'undefined' ? 'en-US' : document.documentElement.lang || 'en-US'
+}
+
 export function formatDate(value, options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) {
   if (!value) return ''
-  return parseDate(value).toLocaleDateString('en-US', options)
+  return parseDate(value).toLocaleDateString(viewerLocale(), options)
 }
 
 // "20:00:00" -> "8:00 PM"
 export function formatTime(value) {
   if (!value) return ''
   const [hours, minutes] = String(value).split(':').map(Number)
-  return new Date(2000, 0, 1, hours, minutes).toLocaleTimeString('en-US', {
+  return new Date(2000, 0, 1, hours, minutes).toLocaleTimeString(viewerLocale(), {
     hour: 'numeric',
     minute: '2-digit',
   })

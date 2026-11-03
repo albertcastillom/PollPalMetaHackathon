@@ -6,6 +6,7 @@ import { createReminderRepository } from './db/reminder-repository.js'
 import { createWashingtonRepository } from './db/washington-repository.js'
 import { createElectionService } from './services/election-service.js'
 import { createSupabaseAuthVerifier } from './services/supabase-auth.js'
+import { createTranslationService } from './services/translation-service.js'
 import { createCensusGeocoder } from './services/providers/census-geocoder.js'
 import { createWashingtonOwnedProvider } from './services/providers/washington-owned.js'
 
@@ -26,11 +27,17 @@ const authVerifier = createSupabaseAuthVerifier({
   supabaseUrl: process.env.SUPABASE_URL,
   publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY,
 })
+const translationService = createTranslationService({
+  apiToken: process.env.HF_TOKEN,
+  model: process.env.TRANSLATION_MODEL,
+  endpoint: process.env.TRANSLATION_API_URL,
+})
 const app = createApp({
   electionService,
   authVerifier,
   reminderRepository,
   candidateRepository: repository,
+  translationService,
   clientOrigin: process.env.CLIENT_ORIGIN,
   appUrl: process.env.APP_URL,
 })

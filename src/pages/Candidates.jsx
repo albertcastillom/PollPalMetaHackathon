@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 import AddressForm from '../components/AddressForm'
 import { useElections } from '../lib/useElections'
 import { formatDate } from '../lib/format'
+import T from '../context/T'
+import { useTranslation } from '../context/useTranslation'
 
 // Order races from the widest district to the narrowest, the way a ballot reads.
 const DISTRICT_ORDER = ['federal', 'statewide', 'state', 'judicial', 'congressional', 'legislative', 'county', 'countywide', 'city/town']
@@ -29,6 +31,8 @@ function checkedOn(value) {
 }
 
 function CandidateCard({ candidate }) {
+  const partyText = candidate.party ? `Prefers ${candidate.party} Party` : 'No party preference listed'
+  const { translate } = useTranslation([partyText])
   return (
     <li className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div
@@ -40,7 +44,7 @@ function CandidateCard({ candidate }) {
       <div className="min-w-0">
         <p className="font-semibold text-slate-900">{candidate.name}</p>
         <p className="text-sm text-slate-500">
-          {candidate.party ? `Prefers ${candidate.party} Party` : 'No party preference listed'}
+          {translate(partyText)}
         </p>
         {candidate.profileUrl && (
           <a
@@ -49,7 +53,7 @@ function CandidateCard({ candidate }) {
             rel="noreferrer"
             className="mt-1 inline-block text-xs font-medium text-blue-700 hover:underline"
           >
-            View profile
+            <T>View profile</T>
           </a>
         )}
       </div>
@@ -60,21 +64,22 @@ function CandidateCard({ candidate }) {
 function RaceSection({ contest }) {
   const candidates = contest.candidates ?? []
   const district = contest.metadata?.district ?? contest.description
+  const { translate } = useTranslation([contest.title, district].filter(Boolean))
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900">{contest.title}</h3>
-          {district && <p className="text-sm text-slate-600">{district}</p>}
+          <h3 className="text-lg font-semibold text-slate-900">{translate(contest.title)}</h3>
+          {district && <p className="text-sm text-slate-600">{translate(district)}</p>}
         </div>
         <p className="text-xs text-slate-500">
-          {candidates.length} {candidates.length === 1 ? 'candidate' : 'candidates'}
+          {candidates.length} {candidates.length === 1 ? <T>candidate</T> : <T>candidates</T>}
         </p>
       </div>
 
       {candidates.length === 0 ? (
-        <p className="mt-4 text-sm text-slate-600">No active candidates are listed for this race.</p>
+        <p className="mt-4 text-sm text-slate-600"><T>No active candidates are listed for this race.</T></p>
       ) : (
         <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {candidates.map((candidate) => (
@@ -85,7 +90,7 @@ function RaceSection({ contest }) {
 
       {(contest.url || contest.source?.url) && (
         <p className="mt-4 text-xs text-slate-500">
-          Source:{' '}
+          <T>Source</T>:{' '}
           <a
             href={contest.url ?? contest.source.url}
             target="_blank"
@@ -104,16 +109,25 @@ function RaceSection({ contest }) {
 function OtherBallotItems({ measures, resources }) {
   if (measures.length === 0 && resources.length === 0) return null
 
+  return <OtherBallotItemsContent measures={measures} resources={resources} />
+}
+
+function OtherBallotItemsContent({ measures, resources }) {
+  const { translate } = useTranslation([
+    ...measures.flatMap((measure) => [measure.title, measure.description]),
+    ...resources.flatMap((resource) => [resource.title, resource.description]),
+  ].filter(Boolean))
+
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {measures.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">Measures</h2>
+          <h2 className="text-lg font-semibold text-slate-900"><T>Measures</T></h2>
           <ul className="mt-3 space-y-3">
             {measures.map((measure) => (
               <li key={measure.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p className="font-medium text-slate-900">{measure.title}</p>
-                {measure.description && <p className="mt-1 text-sm text-slate-600">{measure.description}</p>}
+                <p className="font-medium text-slate-900">{translate(measure.title)}</p>
+                {measure.description && <p className="mt-1 text-sm text-slate-600">{translate(measure.description)}</p>}
                 {measure.url && (
                   <a
                     href={measure.url}
@@ -121,7 +135,7 @@ function OtherBallotItems({ measures, resources }) {
                     rel="noreferrer"
                     className="mt-2 inline-block text-xs font-medium text-blue-700 hover:underline"
                   >
-                    Read official text
+                    <T>Read official text</T>
                   </a>
                 )}
               </li>
@@ -132,7 +146,7 @@ function OtherBallotItems({ measures, resources }) {
 
       {resources.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">Official ballot resources</h2>
+          <h2 className="text-lg font-semibold text-slate-900"><T>Official ballot resources</T></h2>
           <ul className="mt-3 space-y-3">
             {resources.map((resource) => (
               <li key={resource.id}>
@@ -142,9 +156,9 @@ function OtherBallotItems({ measures, resources }) {
                   rel="noreferrer"
                   className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-blue-300"
                 >
-                  <span className="font-medium text-blue-700">{resource.title}</span>
+                  <span className="font-medium text-blue-700">{translate(resource.title)}</span>
                   {resource.description && (
-                    <span className="mt-1 block text-sm text-slate-600">{resource.description}</span>
+                    <span className="mt-1 block text-sm text-slate-600">{translate(resource.description)}</span>
                   )}
                 </a>
               </li>
@@ -186,6 +200,13 @@ function CandidatesPage({ search, onSearch }) {
 
   const contestsCoverage = (data?.coverage ?? []).filter((item) => item.component === 'contests')
   const isPartial = contestsCoverage.length === 0 || contestsCoverage.some((item) => item.status !== 'complete')
+  const { translate } = useTranslation([
+    'Candidate information',
+    'The candidates on your ballot, from the Washington Secretary of State\'s official candidate list.',
+    'Election',
+    ...elections.map((election) => election.name),
+    selectedElection?.name,
+  ].filter(Boolean))
 
   const selectElection = (id) => {
     const next = new URLSearchParams(searchParams)
@@ -196,9 +217,9 @@ function CandidatesPage({ search, onSearch }) {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       <div className="max-w-2xl">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Candidate information</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{translate('Candidate information')}</h1>
         <p className="mt-2 text-slate-600">
-          The candidates on your ballot, from the Washington Secretary of State&apos;s official candidate list.
+          {translate("The candidates on your ballot, from the Washington Secretary of State's official candidate list.")}
         </p>
       </div>
 
@@ -217,7 +238,7 @@ function CandidatesPage({ search, onSearch }) {
         {elections.length > 0 && (
           <div>
             <label htmlFor="election-select" className="mb-1 block text-sm font-semibold text-slate-800">
-              Election
+              {translate('Election')}
             </label>
             <select
               id="election-select"
@@ -227,7 +248,7 @@ function CandidatesPage({ search, onSearch }) {
             >
               {elections.map((election) => (
                 <option key={election.id} value={election.id}>
-                  {election.name} ({formatDate(election.electionDay, { month: 'short', day: 'numeric', year: 'numeric' })})
+                  {translate(election.name)} ({formatDate(election.electionDay, { month: 'short', day: 'numeric', year: 'numeric' })})
                 </option>
               ))}
             </select>
@@ -238,13 +259,13 @@ function CandidatesPage({ search, onSearch }) {
       <div className="mt-8 space-y-6" aria-live="polite">
         {!address && (
           <p className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-            Enter your address to see the candidates on your ballot.
+            <T>Enter your address to see the candidates on your ballot.</T>
           </p>
         )}
 
         {loading && (
           <p role="status" className="text-sm text-slate-600">
-            Looking up the races on your ballot…
+            <T>Looking up the races on your ballot…</T>
           </p>
         )}
 
@@ -256,31 +277,28 @@ function CandidatesPage({ search, onSearch }) {
 
         {data && elections.length === 0 && (
           <p className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-            We didn&apos;t find upcoming elections for this address in our data. Check with your county elections
-            office.
+            <T>We didn't find upcoming elections for this address in our data. Check with your county elections office.</T>
           </p>
         )}
 
         {data && selectedElection && (
           <>
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">{selectedElection.name}</h2>
+              <h2 className="text-xl font-semibold text-slate-900">{translate(selectedElection.name)}</h2>
               <p className="text-sm text-slate-600">
-                Races for {data.normalizedLocation ?? address} · Election Day {formatDate(selectedElection.electionDay)}
+                <T>Races for</T> {data.normalizedLocation ?? address} · <T>Election Day</T> {formatDate(selectedElection.electionDay)}
               </p>
             </div>
 
             {isPartial && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                This list may not include every race on your ballot. Statewide, congressional, legislative, county
-                and city races are covered; school, fire, port and other local districts are not yet included.
-                Your official ballot and voter pamphlet are the final word.
+                <T>This list may not include every race on your ballot. Statewide, congressional, legislative, county and city races are covered; school, fire, port and other local districts are not yet included. Your official ballot and voter pamphlet are the final word.</T>
               </div>
             )}
 
             {races.length === 0 ? (
               <p className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-                We don&apos;t have candidate information for this election at your address yet.
+                <T>We don't have candidate information for this election at your address yet.</T>
               </p>
             ) : (
               races.map((contest) => <RaceSection key={contest.id} contest={contest} />)

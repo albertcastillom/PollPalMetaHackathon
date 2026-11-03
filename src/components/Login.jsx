@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
+import T from '../context/T'
+import { useTranslation } from '../context/useTranslation'
 
 const inputClass =
   'mt-1 w-full rounded-lg border border-slate-300 px-4 py-3 text-sm placeholder-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20'
@@ -16,6 +18,10 @@ function Login() {
   const [submitting, setSubmitting] = useState(false)
 
   const isSignUp = mode === 'signup'
+  const { translate } = useTranslation([
+    'Create an account', 'Log in', 'Email', 'Password', 'you@example.com',
+    'At least 6 characters', 'Please wait…',
+  ])
 
   function switchMode() {
     setMode(isSignUp ? 'login' : 'signup')
@@ -50,28 +56,28 @@ function Login() {
   }
 
   if (loading) {
-    return <p className="px-4 py-16 text-center text-sm text-slate-500">Loading…</p>
+    return <p className="px-4 py-16 text-center text-sm text-slate-500"><T>Loading…</T></p>
   }
 
   if (user) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 sm:px-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <h1 className="text-2xl font-bold text-slate-900">You&apos;re logged in</h1>
+          <h1 className="text-2xl font-bold text-slate-900"><T>You're logged in</T></h1>
           <p className="mt-2 break-all text-sm text-slate-600">{user.email}</p>
           <div className="mt-6 flex gap-3">
             <Link
               to="/"
               className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
             >
-              Find elections
+              <T>Find elections</T>
             </Link>
             <button
               type="button"
               onClick={signOut}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Log out
+              <T>Log out</T>
             </button>
           </div>
         </div>
@@ -82,9 +88,9 @@ function Login() {
   return (
     <div className="mx-auto max-w-md px-4 py-16 sm:px-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <h1 className="text-2xl font-bold text-slate-900">{isSignUp ? 'Create an account' : 'Log in'}</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{translate(isSignUp ? 'Create an account' : 'Log in')}</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Optional. An account lets you save your elections and get reminders.
+          <T>Optional. An account lets you save your elections and get reminders.</T>
         </p>
 
         {!configured && (
@@ -97,7 +103,7 @@ function Login() {
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-              Email
+              {translate('Email')}
             </label>
             <input
               id="email"
@@ -106,13 +112,13 @@ function Login() {
               autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@example.com"
+              placeholder={translate('you@example.com')}
               className={inputClass}
             />
           </div>
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-slate-700">
-              Password
+              {translate('Password')}
             </label>
             <input
               id="password"
@@ -122,7 +128,7 @@ function Login() {
               autoComplete={isSignUp ? 'new-password' : 'current-password'}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="At least 6 characters"
+              placeholder={translate('At least 6 characters')}
               className={inputClass}
             />
           </div>
@@ -143,21 +149,21 @@ function Login() {
             disabled={submitting || !configured}
             className="w-full rounded-lg bg-blue-700 py-3 font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? 'Please wait…' : isSignUp ? 'Create account' : 'Log in'}
+            {submitting ? translate('Please wait…') : isSignUp ? <T>Create account</T> : translate('Log in')}
           </button>
         </form>
 
         <p className="mt-6 text-center text-sm text-slate-500">
-          {isSignUp ? 'Already have an account?' : 'New here?'}{' '}
+          {isSignUp ? <T>Already have an account?</T> : <T>New here?</T>}{' '}
           <button type="button" onClick={switchMode} className="font-medium text-blue-700 hover:underline">
-            {isSignUp ? 'Log in' : 'Create an account'}
+            {translate(isSignUp ? 'Log in' : 'Create an account')}
           </button>
         </p>
 
         <div className="mt-6 rounded-xl bg-slate-50 p-4 text-center">
-          <p className="text-sm text-slate-600">You don&apos;t need an account to use the site.</p>
+          <p className="text-sm text-slate-600"><T>You don't need an account to use the site.</T></p>
           <Link to="/" className="mt-1 inline-block text-sm font-semibold text-blue-700 hover:underline">
-            Continue without an account
+            <T>Continue without an account</T>
           </Link>
         </div>
       </div>
