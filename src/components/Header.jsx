@@ -5,10 +5,21 @@ import T from '../context/T'
 import { LANGUAGES } from '../context/translation-context'
 import { useTranslation } from '../context/useTranslation'
 
+// A small pulsing red dot that marks the live results link.
+function LiveDot() {
+  return (
+    <span className="relative mr-1.5 inline-flex h-2 w-2 align-middle" aria-hidden="true">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+      <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
+    </span>
+  )
+}
+
 const links = [
   { label: 'Find Elections', to: '/' },
   { label: 'Ballot Drop-Off', to: '/map' },
   { label: 'Candidates', to: '/candidates' },
+  { label: 'Live Results', to: '/results', live: true },
   { label: 'Profile', to: '/profile' },
 ]
 
@@ -39,6 +50,7 @@ function Header() {
         <nav className="hidden items-center gap-8 md:flex">
           {links.map((link) => (
             <NavLink key={link.to} to={link.to} end className={linkClass}>
+              {link.live && <LiveDot />}
               <T>{link.label}</T>
             </NavLink>
           ))}
@@ -111,6 +123,7 @@ function Header() {
                 }`
               }
             >
+              {link.live && <LiveDot />}
               <T>{link.label}</T>
             </NavLink>
           ))}

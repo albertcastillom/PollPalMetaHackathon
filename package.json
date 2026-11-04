@@ -12,11 +12,14 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
     "@tailwindcss/vite": "^4.3.4",
+    "d3-geo": "^3.1.1",
     "mapbox-gl": "^3.34.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.5",
-    "tailwindcss": "^4.3.4"
+    "tailwindcss": "^4.3.4",
+    "topojson-client": "^3.1.0",
+    "us-atlas": "^3.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

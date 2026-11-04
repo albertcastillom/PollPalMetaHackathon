@@ -6,6 +6,7 @@ import Candidates from './pages/Candidates'
 import Login from './components/Login'
 import Footer from './components/Footer'
 import Home from './pages/Home'
+import LiveResults from './pages/LiveResults'
 import Profile from './pages/Profile'
 import AuthProvider from './context/AuthProvider'
 import TranslationProvider from './context/TranslationProvider'
@@ -41,6 +42,7 @@ function App() {
               <Route path="/" element={<Home search={search} onSearch={onSearch} />} />
               <Route path="/map" element={<BallotMap search={search} onSearch={onSearch} />} />
               <Route path="/candidates" element={<Candidates search={search} onSearch={onSearch} />} />
+              <Route path="/results" element={<LiveResults />} />
               <Route path="/login" element={<Login />} />
               <Route path="/profile" element={<Profile />} />
             </Routes>
