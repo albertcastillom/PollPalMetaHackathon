@@ -55,19 +55,25 @@ export async function getReminderPreferences(userId) {
   )
 }
 
+const REMINDER_COLUMNS = 'email_subscribed, address, normalized_location, updated_at'
+
+// Every account gets an account_preferences row when it signs up, so this updates that row.
+// It doesn't use upsert: an upsert also rewrites user_id, which logged-in users are not
+// allowed to change, and Postgres rejects the whole save. The insert is only a fallback for
+// an account whose row is missing.
 export async function saveReminderPreferences(userId, { emailEnabled, address, normalizedLocation }) {
+  const values = {
+    email_subscribed: emailEnabled,
+    address: address || null,
+    normalized_location: normalizedLocation || null,
+    updated_at: new Date().toISOString(),
+  }
+  const updated = check(
+    await client().from('account_preferences').update(values).eq('user_id', userId).select(REMINDER_COLUMNS).maybeSingle(),
+  )
+  if (updated) return updated
   return check(
-    await client()
-      .from('account_preferences')
-      .upsert({
-        user_id: userId,
-        email_subscribed: emailEnabled,
-        address: address || null,
-        normalized_location: normalizedLocation || null,
-        updated_at: new Date().toISOString(),
-      })
-      .select('email_subscribed, address, normalized_location, updated_at')
-      .single(),
+    await client().from('account_preferences').insert({ user_id: userId, ...values }).select(REMINDER_COLUMNS).single(),
   )
 }
 
