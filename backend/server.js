@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import { fileURLToPath } from 'node:url'
 
 import { createApp } from './app.js'
 import { createPool } from './db/pool.js'
@@ -56,7 +57,11 @@ const comparisonRepository = {
   },
 }
 const comparisonService = createCandidateComparisonService({ repository: comparisonRepository, model: museClient })
-const translationService = createTranslationService({ modelClient: museClient })
+// Translations are saved to disk so a restart doesn't make every page translate from scratch.
+const translationService = createTranslationService({
+  modelClient: museClient,
+  cacheFile: fileURLToPath(new URL('./.cache/translations.json', import.meta.url)),
+})
 const app = createApp({
   electionService,
   authVerifier,

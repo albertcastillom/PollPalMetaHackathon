@@ -41,7 +41,10 @@ export function createMuseClient({
     model,
 
     // Sends one structured request and returns the parsed JSON object.
-    async generateJson({ instructions, input, schemaName, schema }) {
+    // `reasoningEffort` ('minimal' | 'low' | 'medium' | 'high' | ...) trades thinking time for
+    // speed. Muse Spark reasons before answering by default, which is most of the wait for
+    // simple jobs like translation.
+    async generateJson({ instructions, input, schemaName, schema, reasoningEffort }) {
       const response = await fetchImpl(`${baseUrl.replace(/\/$/, '')}/responses`, {
         method: 'POST',
         headers: {
@@ -54,6 +57,7 @@ export function createMuseClient({
           input,
           temperature: 0,
           text: { format: { type: 'json_schema', name: schemaName, schema, strict: true } },
+          ...(reasoningEffort ? { reasoning: { effort: reasoningEffort } } : {}),
         }),
         signal: AbortSignal.timeout(timeoutMs),
       })
