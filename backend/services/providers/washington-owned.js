@@ -6,7 +6,7 @@ export function createWashingtonOwnedProvider({ repository }) {
   return {
     name: 'pollpal_washington',
 
-    async findUpcoming({ coordinates, normalizedAddress = null }) {
+    async findUpcoming({ coordinates, normalizedAddress = null, asOf = null }) {
       const jurisdictions = await repository.resolveJurisdictions(coordinates)
       const state = jurisdictions.find((item) => item.type === 'state')
 
@@ -15,7 +15,7 @@ export function createWashingtonOwnedProvider({ repository }) {
       }
 
       const jurisdictionIds = jurisdictions.map((item) => item.id)
-      const elections = await repository.findUpcomingElections(jurisdictionIds)
+      const elections = await repository.findUpcomingElections(jurisdictionIds, { asOf })
       const electionIds = elections.map((election) => election.id)
       const [coverage, votingLocations, contests] = await Promise.all([
         repository.getCoverage(jurisdictionIds),

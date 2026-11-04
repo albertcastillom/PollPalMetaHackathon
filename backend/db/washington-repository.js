@@ -53,7 +53,9 @@ export function createWashingtonRepository(pool) {
       return [...rows, ...derived.rows.filter((row) => !seen.has(row.id))]
     },
 
-    async findUpcomingElections(jurisdictionIds) {
+    // `asOf` (YYYY-MM-DD) treats that date as today, so a demo can show an election that has
+    // already happened. Without it, only elections from today onward are returned.
+    async findUpcomingElections(jurisdictionIds, { asOf = null } = {}) {
       if (jurisdictionIds.length === 0) return []
 
       const { rows } = await pool.query(
@@ -86,11 +88,11 @@ export function createWashingtonRepository(pool) {
          join public.election_jurisdictions ej on ej.election_id = e.id
          left join public.election_milestones m on m.election_id = e.id
          where ej.jurisdiction_id = any($1)
-           and e.election_day >= current_date
+           and e.election_day >= coalesce($2::date, current_date)
            and e.status in ('expected', 'confirmed')
          group by e.id, s.id
          order by e.election_day`,
-        [jurisdictionIds],
+        [jurisdictionIds, asOf],
       )
 
       return rows.map(mapElection)

@@ -285,7 +285,7 @@ export function createCandidateComparisonService({ repository, model, cacheTtlMs
           answersRejected: unverified,
           flags,
         },
-        notices: {
+        notices: contest.notices ?? {
           candidateStatement: "Candidate's own words, as submitted to the official Washington voters' guide. The Secretary of State does not verify these statements for truth or accuracy.",
           officialFiling: 'From the official candidate filing with the Washington Secretary of State.',
           aiSummary: 'Short summaries are written by AI (Muse Spark) only from each candidate\'s own voters\' guide text, and each one is checked against the exact quotes shown. They do not rank or recommend anyone.',

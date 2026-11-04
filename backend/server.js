@@ -11,8 +11,17 @@ import { createSupabaseAuthVerifier } from './services/supabase-auth.js'
 import { createTranslationService } from './services/translation-service.js'
 import { createCensusGeocoder } from './services/providers/census-geocoder.js'
 import { createWashingtonOwnedProvider } from './services/providers/washington-owned.js'
+import { createDemoElectionProvider } from './services/providers/demo-elections.js'
 
 const port = Number.parseInt(process.env.PORT ?? '3001', 10)
+
+// Demo mode (on unless DEMO_MODE=false): treat DEMO_DATE as today so the November 3, 2026
+// election still shows as upcoming, and answer addresses outside Washington with sample data.
+const demoMode = process.env.DEMO_MODE !== 'false'
+const demoDate = process.env.DEMO_DATE || '2026-10-27'
+if (demoMode && !/^\d{4}-\d{2}-\d{2}$/.test(demoDate)) throw new Error('DEMO_DATE must look like 2026-10-27.')
+const demoProvider = demoMode ? createDemoElectionProvider() : null
+if (demoMode) console.log(`Demo mode is on: treating ${demoDate} as today, with sample data outside Washington.`)
 
 const pool = createPool({
   connectionString: process.env.DATABASE_URL,
@@ -24,7 +33,12 @@ const reminderRepository = createReminderRepository(pool, {
 })
 const electionProvider = createWashingtonOwnedProvider({ repository })
 const addressGeocoder = createCensusGeocoder()
-const electionService = createElectionService({ electionProvider, addressGeocoder })
+const electionService = createElectionService({
+  electionProvider,
+  addressGeocoder,
+  demoProvider,
+  asOf: demoMode ? demoDate : null,
+})
 const authVerifier = createSupabaseAuthVerifier({
   supabaseUrl: process.env.SUPABASE_URL,
   publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY,
@@ -35,7 +49,13 @@ const museClient = createMuseClient({
   model: process.env.MUSE_MODEL || undefined,
 })
 if (!museClient) console.warn('MODEL_API_KEY is not set: candidate comparisons and translations will use fallbacks.')
-const comparisonService = createCandidateComparisonService({ repository, model: museClient })
+// Sample races (outside Washington) are compared the same way as real ones.
+const comparisonRepository = {
+  async findContestForComparison(contestId) {
+    return demoProvider?.findContestForComparison(contestId) ?? repository.findContestForComparison(contestId)
+  },
+}
+const comparisonService = createCandidateComparisonService({ repository: comparisonRepository, model: museClient })
 const translationService = createTranslationService({ modelClient: museClient })
 const app = createApp({
   electionService,

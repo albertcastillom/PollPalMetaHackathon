@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import AddressForm from '../components/AddressForm'
 import CandidateComparison from '../components/CandidateComparison'
+import DemoNotice from '../components/DemoNotice'
 import { useElections } from '../lib/useElections'
 import { formatDate } from '../lib/format'
 import T from '../context/T'
@@ -213,10 +214,11 @@ function CandidatesPage({ search, onSearch }) {
   }, [contests, selectedElection])
 
   const contestsCoverage = (data?.coverage ?? []).filter((item) => item.component === 'contests')
-  const isPartial = contestsCoverage.length === 0 || contestsCoverage.some((item) => item.status !== 'complete')
+  // The coverage warning describes gaps in Washington's official data; sample data has its own notice.
+  const isPartial = !data?.demo?.sample && (contestsCoverage.length === 0 || contestsCoverage.some((item) => item.status !== 'complete'))
   const { translate } = useTranslation([
     'Candidate information',
-    'The candidates on your ballot, from the Washington Secretary of State\'s official candidate list.',
+    'The candidates on your ballot. In Washington, these come from the Secretary of State\'s official candidate list.',
     'Election',
     ...elections.map((election) => election.name),
     selectedElection?.name,
@@ -233,7 +235,7 @@ function CandidatesPage({ search, onSearch }) {
       <div className="max-w-2xl">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{translate('Candidate information')}</h1>
         <p className="mt-2 text-slate-600">
-          {translate("The candidates on your ballot, from the Washington Secretary of State's official candidate list.")}
+          {translate("The candidates on your ballot. In Washington, these come from the Secretary of State's official candidate list.")}
         </p>
       </div>
 
@@ -245,7 +247,7 @@ function CandidatesPage({ search, onSearch }) {
             initialAddress={address}
             buttonLabel="Find candidates"
             onSubmit={onSearch}
-            hint="Currently covers Washington state."
+            hint="Works for any US address. Washington uses official data; other states show sample data."
           />
         </div>
 
@@ -294,6 +296,8 @@ function CandidatesPage({ search, onSearch }) {
             <T>We didn't find upcoming elections for this address in our data. Check with your county elections office.</T>
           </p>
         )}
+
+        {data?.demo && <DemoNotice demo={data.demo} />}
 
         {data && selectedElection && (
           <>

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
 import AddressForm from '../components/AddressForm'
+import DemoNotice from '../components/DemoNotice'
 import { useElections } from '../lib/useElections'
 import { distanceMiles, formatDate, formatTime, todayString } from '../lib/format'
 import T from '../context/T'
@@ -40,7 +41,8 @@ function BallotMap({ search, onSearch }) {
   const locations = useMemo(() => {
     if (!data) return []
 
-    const today = todayString()
+    // In demo mode the backend sends a demo "today" so sites from a past election still show.
+    const today = data.demo?.asOf ?? todayString()
     const seen = new Set()
     const result = []
 
@@ -87,9 +89,15 @@ function BallotMap({ search, onSearch }) {
           initialAddress={address}
           buttonLabel="Find locations"
           onSubmit={onSearch}
-          hint="Currently covers Washington state."
+          hint="Works for any US address. Washington uses official data; other states show sample data."
         />
       </div>
+
+      {data?.demo && (
+        <div className="mt-6">
+          <DemoNotice demo={data.demo} />
+        </div>
+      )}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-3" aria-live="polite">
         {/* Map */}

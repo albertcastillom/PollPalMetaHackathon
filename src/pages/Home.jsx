@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom'
 import AddressForm from '../components/AddressForm'
+import DemoNotice from '../components/DemoNotice'
 import { useElections } from '../lib/useElections'
 import { formatDate, todayString } from '../lib/format'
 import T from '../context/T'
 import { useTranslation } from '../context/useTranslation'
 
-function ElectionCard({ election }) {
-  const today = todayString()
+// `today` is the demo date when the backend is in demo mode, so a past election's key dates still show.
+function ElectionCard({ election, today = todayString() }) {
   const upcomingDates = (election.milestones ?? []).filter((milestone) => milestone.occursOn >= today)
   const { translate } = useTranslation([
     election.name,
@@ -86,6 +87,11 @@ function Results({ data, address }) {
 
   return (
     <div>
+      {data.demo && (
+        <div className="mb-4">
+          <DemoNotice demo={data.demo} />
+        </div>
+      )}
       <h2 className="text-lg font-semibold text-slate-900">
         {translate('Elections for')} {data.normalizedLocation ?? address}
       </h2>
@@ -97,7 +103,7 @@ function Results({ data, address }) {
       ) : (
         <ul className="mt-4 space-y-3">
           {elections.map((election) => (
-            <ElectionCard key={election.id} election={election} />
+            <ElectionCard key={election.id} election={election} today={data.demo?.asOf ?? undefined} />
           ))}
         </ul>
       )}
@@ -143,7 +149,7 @@ function Home({ search, onSearch }) {
             id="address"
             initialAddress={address}
             onSubmit={onSearch}
-            hint="No account needed. We use your address only to find your elections. Currently covers Washington state."
+            hint="No account needed. We use your address only to find your elections. Works for any US address. Washington uses official data; other states show sample data."
           />
         </div>
 
