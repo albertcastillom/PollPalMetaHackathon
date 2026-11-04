@@ -4,6 +4,8 @@ import { supabase } from './supabase'
 // Every call runs as the logged-in user; row level security in Supabase keeps each
 // person's data private. Each function throws an Error with a message safe to show.
 
+const PROFILE_COLUMNS = 'id, email, display_name, created_at, voted_at'
+
 function check({ data, error }) {
   if (error) throw new Error(error.message || 'Something went wrong. Please try again.')
   return data
@@ -15,7 +17,7 @@ function client() {
 }
 
 export async function getProfile(userId) {
-  return check(await client().from('profiles').select('id, email, display_name, created_at').eq('id', userId).maybeSingle())
+  return check(await client().from('profiles').select(PROFILE_COLUMNS).eq('id', userId).maybeSingle())
 }
 
 export async function updateDisplayName(userId, displayName) {
@@ -25,7 +27,20 @@ export async function updateDisplayName(userId, displayName) {
       .from('profiles')
       .update({ display_name: value, updated_at: new Date().toISOString() })
       .eq('id', userId)
-      .select('id, email, display_name, created_at')
+      .select(PROFILE_COLUMNS)
+      .single(),
+  )
+}
+
+// Marks (or unmarks) that the person voted. Returns the updated profile.
+export async function setVoted(userId, voted) {
+  const now = new Date().toISOString()
+  return check(
+    await client()
+      .from('profiles')
+      .update({ voted_at: voted ? now : null, updated_at: now })
+      .eq('id', userId)
+      .select(PROFILE_COLUMNS)
       .single(),
   )
 }

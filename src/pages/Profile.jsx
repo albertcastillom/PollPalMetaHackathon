@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import { fetchElectionsByAddress } from '../lib/api'
@@ -10,6 +10,7 @@ import {
   listFriends,
   removeFriendship,
   saveReminderPreferences,
+  setVoted,
   sendFriendRequest,
   updateDisplayName,
 } from '../lib/profile'
@@ -120,9 +121,12 @@ function ProfileSummary({ profile, onUpdated }) {
             </form>
           ) : (
             <>
-              <h1 className="truncate text-2xl font-bold text-slate-900">
-                {profile.display_name || translate('Your profile')}
-              </h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="truncate text-2xl font-bold text-slate-900">
+                  {profile.display_name || translate('Your profile')}
+                </h1>
+                {profile.voted_at && <IVotedBadge />}
+              </div>
               <p className="truncate text-sm text-slate-600">{profile.email}</p>
               {profile.created_at && (
                 <p className="mt-1 text-xs text-slate-500">
@@ -140,6 +144,146 @@ function ProfileSummary({ profile, onUpdated }) {
       </div>
       <Message message={message} />
     </section>
+  )
+}
+
+// ---------- I Voted badge ----------
+
+// Flag geometry for the sticker (SVG units in a 120×120 box).
+const FLAG = { left: 32, right: 88, top: 33, stripe: 2, cantonRight: 54 }
+const STRIPES = Array.from({ length: 13 }, (_, i) => FLAG.top + FLAG.stripe * i + FLAG.stripe / 2)
+// A gentle wave: every stripe follows the same S-curve so the flag looks like it's flying.
+const wave = (y) => `M${FLAG.left} ${y} Q46 ${y - 4} 60 ${y} T${FLAG.right} ${y}`
+const CANTON_STARS = [0, 1, 2].flatMap((row) =>
+  [0, 1, 2, 3].map((col) => ({ x: 35 + col * 5 + (row % 2) * 2.5, y: 36 + row * 4 - (col * 5 > 10 ? 1.5 : 0.5) })),
+)
+// Small stars spaced around the bottom of the ring.
+const RING_STARS = [-50, -25, 0, 25, 50].map((deg) => {
+  const rad = ((90 + deg) * Math.PI) / 180
+  return { x: 60 + 49 * Math.cos(rad), y: 60 + 49 * Math.sin(rad) }
+})
+
+// A round "I Voted" sticker with a waving flag. `size` is "sm" (next to the name) or "lg" (in the voting card).
+function IVotedBadge({ size = 'sm' }) {
+  const { translate } = useTranslation(['I Voted', 'Every vote counts'])
+  const id = useId().replace(/:/g, '')
+  const large = size === 'lg'
+
+  return (
+    <svg
+      viewBox="0 0 120 120"
+      role="img"
+      aria-label={translate('I Voted')}
+      className={`shrink-0 drop-shadow-md ${large ? 'h-40 w-40 -rotate-6 sm:h-48 sm:w-48' : 'h-11 w-11'}`}
+    >
+      <defs>
+        <path id={`${id}-top`} d="M 13 60 A 47 47 0 0 1 107 60" />
+        <clipPath id={`${id}-canton`}>
+          <rect x={FLAG.left} y={FLAG.top - 6} width={FLAG.cantonRight - FLAG.left} height={FLAG.stripe * 7 + 6} />
+        </clipPath>
+        <radialGradient id={`${id}-shine`} cx="35%" cy="30%" r="75%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+
+      {/* Sticker edge and navy ring */}
+      <circle cx="60" cy="60" r="59" fill="#ffffff" stroke="#e2e8f0" strokeWidth="1" />
+      <circle cx="60" cy="60" r="56" fill="#1e3a8a" />
+      <circle cx="60" cy="60" r="42" fill="#ffffff" />
+      <circle cx="60" cy="60" r="40" fill="none" stroke="#b91c1c" strokeWidth="1.2" />
+
+      {/* Lettering around the top of the ring */}
+      <text fill="#ffffff" fontSize="9" fontWeight="700" letterSpacing="1.5" fontFamily="system-ui, sans-serif">
+        <textPath href={`#${id}-top`} startOffset="50%" textAnchor="middle">
+          {translate('Every vote counts').toUpperCase()}
+        </textPath>
+      </text>
+      {RING_STARS.map((star) => (
+        <text key={star.x} x={star.x} y={star.y + 3} fill="#ffffff" fontSize="8" textAnchor="middle">★</text>
+      ))}
+
+      {/* Waving flag */}
+      <line x1={FLAG.left - 1} y1={FLAG.top - 3} x2={FLAG.left - 1} y2="66" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx={FLAG.left - 1} cy={FLAG.top - 3.5} r="1.4" fill="#ca8a04" />
+      {STRIPES.map((y, i) => (
+        <path key={y} d={wave(y)} fill="none" stroke={i % 2 === 0 ? '#b91c1c' : '#ffffff'} strokeWidth={FLAG.stripe + 0.15} />
+      ))}
+      <g clipPath={`url(#${id}-canton)`}>
+        {STRIPES.slice(0, 7).map((y) => (
+          <path key={y} d={wave(y)} fill="none" stroke="#1e3a8a" strokeWidth={FLAG.stripe + 0.3} />
+        ))}
+      </g>
+      {CANTON_STARS.map((star) => (
+        <circle key={`${star.x}-${star.y}`} cx={star.x} cy={star.y} r="0.7" fill="#ffffff" />
+      ))}
+
+      {/* I VOTED */}
+      <text
+        x="60"
+        y="84"
+        textAnchor="middle"
+        fill="#1e3a8a"
+        fontSize="15"
+        fontWeight="900"
+        letterSpacing="0.5"
+        fontFamily="system-ui, sans-serif"
+      >
+        {translate('I Voted').toUpperCase()}
+      </text>
+      <path d="M 40 89 Q 60 93 80 89" fill="none" stroke="#b91c1c" strokeWidth="1.5" strokeLinecap="round" />
+
+      {/* Glossy sticker shine */}
+      <circle cx="60" cy="60" r="56" fill={`url(#${id}-shine)`} />
+    </svg>
+  )
+}
+
+function VotedCard({ profile, onUpdated }) {
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState(null)
+  const { translate } = useTranslation([
+    'Saving…', 'I voted', 'Undo', 'Marked on',
+    'Did you vote? Mark it here to earn your I Voted badge.',
+    'Thanks for voting! Your badge shows on your profile.',
+  ])
+  const voted = Boolean(profile.voted_at)
+
+  async function handleChange(next) {
+    setSaving(true)
+    setMessage(null)
+    try {
+      onUpdated(await setVoted(profile.id, next))
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Card title="Your vote">
+      {voted ? (
+        <div className="flex flex-col items-center gap-3 text-center">
+          <IVotedBadge size="lg" />
+          <p className="text-sm text-slate-700">{translate('Thanks for voting! Your badge shows on your profile.')}</p>
+          <p className="text-xs text-slate-500">
+            {translate('Marked on')} {formatDate(profile.voted_at, { month: 'long', day: 'numeric', year: 'numeric' })}
+          </p>
+          <button type="button" onClick={() => handleChange(false)} disabled={saving} className={secondaryButton}>
+            {translate(saving ? 'Saving…' : 'Undo')}
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-slate-700">{translate('Did you vote? Mark it here to earn your I Voted badge.')}</p>
+          <button type="button" onClick={() => handleChange(true)} disabled={saving} className={`${primaryButton} shrink-0`}>
+            {translate(saving ? 'Saving…' : 'I voted')}
+          </button>
+        </div>
+      )}
+      <Message message={message} />
+    </Card>
   )
 }
 
@@ -507,7 +651,12 @@ function Profile() {
   const isCurrent = state.userId === userId
   const { data, error } = isCurrent ? state : { data: null, error: null }
   // Fall back to the auth user if the profile row hasn't been created yet.
-  const profile = data && (data.profile ?? { id: user.id, email: user.email, display_name: null, created_at: user.created_at })
+  const profile =
+    data && (data.profile ?? { id: user.id, email: user.email, display_name: null, created_at: user.created_at, voted_at: null })
+
+  function updateProfile(next) {
+    setState((previous) => ({ ...previous, data: { ...previous.data, profile: next } }))
+  }
 
   return (
     <div className="bg-gradient-to-b from-blue-50 to-slate-50">
@@ -524,10 +673,8 @@ function Profile() {
         )}
         {data && (
           <>
-            <ProfileSummary
-              profile={profile}
-              onUpdated={(next) => setState((previous) => ({ ...previous, data: { ...previous.data, profile: next } }))}
-            />
+            <ProfileSummary profile={profile} onUpdated={updateProfile} />
+            <VotedCard profile={profile} onUpdated={updateProfile} />
             <Reminders userId={user.id} email={profile.email} initial={data.reminders} />
             <Friends initial={data.friends} />
           </>
